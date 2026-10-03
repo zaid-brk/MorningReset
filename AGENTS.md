@@ -9,4 +9,7 @@
 - Keep `MorningResetDemo` free of Screen Time frameworks, entitlements, App Groups, and embedded extensions. Force its sessions to be demos, use separate local storage, and never award protected streak credit.
 - Run `python3 Scripts/generate_project.py` after adding source files. Commit the generated Xcode project and shared schemes. Keep signing teams and credentials out of source control.
 - Run iOS builds/tests with Xcode when available. Record limitations honestly in Docs/VALIDATION.md. Physical Screen Time behavior requires an entitled, signed iPhone build.
+- For every change, create a new branch from the latest `main` before editing. Use `feat/`, `fix/`, or `chore/` names as appropriate; documentation and configuration changes also require a branch.
+- Push only the working branch and open a pull request with the problem, resulting behavior, and relevant validation. Never push changes directly to `main` or bypass its protection.
+- Wait for the user's explicit confirmation before merging a pull request. Do not enable auto-merge or treat approval of a feature request as approval to merge. If feedback requires changes, update the same pull request and report the new result before merging.
 - Do not publish, submit, or create public repositories without explicit user instructions.

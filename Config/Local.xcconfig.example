@@ -1,0 +1,5 @@
+// Copy to Local.xcconfig (ignored by Git), then use your registered identifiers.
+// Use the same Apple Developer team for every target.
+DEVELOPMENT_TEAM = YOUR_TEAM_ID
+BASE_BUNDLE_IDENTIFIER = com.yourname.MorningReset
+APP_GROUP_IDENTIFIER = group.com.yourname.MorningReset

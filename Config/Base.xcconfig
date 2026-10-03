@@ -1,0 +1,11 @@
+// Customize identifiers here. Keep personal signing values in ignored Local.xcconfig.
+BASE_BUNDLE_IDENTIFIER = com.example.MorningReset
+APP_GROUP_IDENTIFIER = group.$(BASE_BUNDLE_IDENTIFIER)
+IPHONEOS_DEPLOYMENT_TARGET = 17.0
+SWIFT_VERSION = 5.0
+SWIFT_STRICT_CONCURRENCY = minimal
+CODE_SIGN_STYLE = Automatic
+MARKETING_VERSION = 1.0
+CURRENT_PROJECT_VERSION = 1
+TARGETED_DEVICE_FAMILY = 1
+#include? "Local.xcconfig"

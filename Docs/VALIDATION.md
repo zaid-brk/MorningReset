@@ -41,6 +41,10 @@ During initial implementation, this environment had Swift Command Line Tools, no
 
 The SwiftUI app, SwiftData mirror, and Screen Time targets have compiled and linked. Native UI layout, entitlements/signing, actual SwiftData persistence, and real iPhone behavior have **not been run or verified**. Physical tests must be performed after setup in README.md.
 
+## GitHub source backup — 2026-10-03
+
+Uploaded the source to the private [zaid-brk/MorningReset](https://github.com/zaid-brk/MorningReset) repository on `main`. The source snapshot excludes local signing configuration, personal team identifiers, Xcode user data, build products, and signing credentials. Project structure checks passed before upload. The current working directory does not contain Git metadata because the workspace denies creation of its `.git` directory; the upload used a temporary clean checkout. A fresh clone needs a local signing configuration before iPhone installation.
+
 ## Physical-device checklist
 
 Record device model, iOS version, app build, signing method, local time zone, and results for every case. Test a development build first, then repeat the core shield/callback cases on a distribution build before TestFlight release.

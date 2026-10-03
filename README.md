@@ -4,6 +4,8 @@ A native iPhone app that gives your morning a little room before the scroll. Cho
 
 SwiftUI · iOS 17+ · Screen Time APIs · local storage · no account or backend
 
+Source backup: [zaid-brk/MorningReset](https://github.com/zaid-brk/MorningReset) (private repository). Local signing settings are excluded; a fresh clone needs its own `Config/Local.xcconfig`.
+
 **Current release behavior:** after ten minutes, reopen Morning Reset to release the selected apps. The optional notification reminds you to return; it does not execute an unlock. This is the explicitly labeled fallback from the specification, not a claim of automatic background release. See [feasibility evidence](Docs/FEASIBILITY.md).
 
 ## What is included
@@ -107,6 +109,6 @@ The standalone demo compiles with `MORNING_RESET_DEMO`, excludes the real Screen
 - Individual authorization is voluntary and bypassable. Activity completion is self-confirmed, and changing the system clock can affect wall-clock deadlines.
 - The daily schedule and one-night adjustment are implemented. Separate weekday/weekend schedules are deferred to keep version one simple.
 
-Before TestFlight/App Store distribution, request Apple's **Family Controls distribution approval for the app and relevant extension identifiers**; confirm the resulting provisioning support and profiles. [Apple's entitlement instructions](https://developer.apple.com/documentation/familycontrols/requesting-the-family-controls-entitlement) explain this requirement. Check all three signed targets, run the physical-device matrix, verify privacy declarations against the final app, update version/build numbers, and archive using the shared scheme. No upload, submission, or public repository creation has been performed.
+Before TestFlight/App Store distribution, request Apple's **Family Controls distribution approval for the app and relevant extension identifiers**; confirm the resulting provisioning support and profiles. [Apple's entitlement instructions](https://developer.apple.com/documentation/familycontrols/requesting-the-family-controls-entitlement) explain this requirement. Check all three signed targets, run the physical-device matrix, verify privacy declarations against the final app, update version/build numbers, and archive using the shared scheme. No TestFlight/App Store upload, submission, or public repository creation has been performed.
 
 The original brief is preserved in `Morning-Reset-Codex-Prompt.md` and copied to [SPEC.md](SPEC.md). Project guidance is in [AGENTS.md](AGENTS.md).

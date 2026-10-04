@@ -1,142 +1,169 @@
 # Morning Reset
 
-A native iPhone app that gives your morning a little room before the scroll. Choose distracting apps and a nightly lock time, complete a short routine of timed, self-confirmed tasks, then take a ten-minute pause.
+A native iPhone app that gives your morning a little room before the scroll. Set a nightly time, complete a short routine of timed, self-confirmed tasks, then take a ten-minute pause before returning to your distracting apps.
 
-SwiftUI · iOS 17+ · Screen Time or voluntary Shortcuts redirects · local storage · no account or backend
+**Install the `MorningResetShortcuts` edition using the tutorial below.** It uses Apple's Shortcuts app to send you back to your routine when you open selected apps. You can build it for your own iPhone with a free Apple Account and Xcode's Personal Team; paid Apple Developer Program membership and Family Controls approval are not required for this edition. [Apple's Personal Team guidance](https://developer.apple.com/help/account/basics/about-your-developer-account) explains this development-install route.
 
-Source repository: [zaid-brk/MorningReset](https://github.com/zaid-brk/MorningReset). Local signing settings are excluded; a fresh clone needs its own `Config/Local.xcconfig`.
+SwiftUI · iOS 17+ · on-device storage · no account inside the app · no backend or dependencies
 
-**Choose an edition:** `MorningResetShortcuts` uses a one-time, user-created Shortcuts automation to interrupt scrolling without the Family Controls entitlement. `MorningReset` uses real Screen Time shields and requires the appropriate developer team and entitlements. `MorningResetDemo` only demonstrates routines and never redirects or shields apps.
+## What you need
 
-**Screen Time release behavior:** after ten minutes, reopen Morning Reset to release the selected apps. The optional notification reminds you to return; it does not execute an unlock. This is the explicitly labeled fallback from the specification, not a claim of automatic background release. The Shortcuts edition checks the saved deadline each time its automation runs and returns No after the wait, unless a newer night has started. See [feasibility evidence](Docs/FEASIBILITY.md).
+- A Mac with [Xcode](https://developer.apple.com/xcode/) installed. Use an Xcode version that supports your iPhone's iOS version, and finish its first-launch setup and iOS platform download.
+- An iPhone running iOS 17 or later, with Apple's **Shortcuts** app installed.
+- Your Apple Account, added to Xcode for signing the app.
+- A cable to connect your iPhone for the initial installation.
+- Internet access for downloading the project and setting up signing. Your routine and redirect decisions work locally afterward.
 
-## What is included
+This is a source-code installation through Xcode. There is no App Store or TestFlight download for this project.
 
-- Five-step onboarding and Today, Routine, and Settings tabs.
-- Individual Screen Time authorization, Apple's app picker, a named ManagedSettings shield store, a DeviceActivity monitor extension, and a shield appearance extension.
-- Daily nightly scheduling and a one-night time adjustment. Selected individual apps only; no device-wide restrictions.
-- Editable presets and custom tasks, deletion and reordering, a 15-second minimum, and session snapshots.
-- Sequential, manually started countdowns and manually confirmed completion. Saved timestamps survive relaunch and restart.
-- A ten-minute waiting deadline, optional task/wait reminders, and a confirmed bypass option.
-- Current/best routine streaks, successful mornings this week, and local history. Demo/prototype sessions never earn protected streak credit.
-- Warm light and charcoal dark themes, system typography, accessible controls, and a vector-drawn sunrise icon.
-- A separate **MorningResetDemo** scheme for free Personal Team testing, with routine timers, waiting, reminders, and history; no app blocking or protected streak credit.
-- A separate **MorningResetShortcuts** scheme with a Boolean App Intent, nightly redirect periods, a seven-step onboarding/Settings tutorial, a 60-second setup test, and voluntary bypass. It has no Screen Time entitlement, App Group, or embedded extensions. Its routines never earn protected streak credit.
+## 1. Download and open the project
 
-**Validation status:** All 35 core test cases passed with both the Swift command-line runner and actual XCTest. With Xcode 27.0, all three app editions compile for generic iOS hardware in unsigned builds, including App Intents metadata extraction for the Shortcuts action. Signing, installation, real automation execution/redirect latency, notifications, SwiftData persistence, and accessibility/layout still require device checks. See [validation record](Docs/VALIDATION.md).
+On the [GitHub repository page](https://github.com/zaid-brk/MorningReset), click **Code → Download ZIP**, unzip it on your Mac, and open **`MorningReset.xcodeproj`** in Xcode.
 
-## Run the Shortcuts edition on your iPhone
+If you prefer Terminal, clone it instead:
 
-1. Open `MorningReset.xcodeproj` in Xcode and select **MorningResetShortcuts**. Use your Personal Team and the ignored `Config/Local.xcconfig`; a fresh checkout needs its own local config with a team and unique base bundle ID.
-2. Connect and trust your iPhone, enable Developer Mode if requested, choose it as the destination, and press **⌘R**. The installed app is named **Morning Reset Shortcuts** and has independent data from both other editions.
-3. In onboarding, choose **Start step-by-step tutorial**. The same guide is always available at **Settings → App redirects → Step-by-step setup & test**.
-4. In Apple's Shortcuts app, create one **App → Is Opened → Run Immediately** personal automation. Choose all distracting apps together; exclude **Morning Reset Shortcuts** and **Shortcuts** to avoid loops.
-5. Add **Check Morning Redirect** from this app. Below it, add **If**, using the action's Boolean output with condition **true/Yes**. Inside that branch add **Open App → Morning Reset Shortcuts**. Leave Otherwise empty. Save the automation. The tutorial explains variable selection and action placement.
-6. Return to the last tutorial step and start the **60-second redirect test**. Open a selected app and check that it returns you here. After the check action ran, select **I saw the redirect · finish setup** only if you observed the return. Setup status is your report, not automatic verification.
-7. Save your recurring nightly redirect time, edit your routine, optionally enable reminders, and finish onboarding. Redirects begin at the next nightly time, or when you tap **I'm awake** to start a routine. Complete each task and the ten-minute pause. The next automation check after the deadline allows the other app; a newer nightly period wins over an old wait.
+```sh
+git clone https://github.com/zaid-brk/MorningReset.git
+cd MorningReset
+open MorningReset.xcodeproj
+```
 
-The app cannot create or inspect personal automations. Configure once per device; revisit Shortcuts to edit the selected apps, repair a deleted automation, or set up a new phone. If Shortcuts is missing, install Apple's Shortcuts app. Apple's [app-trigger guide](https://support.apple.com/guide/shortcuts/setting-triggers-apde31e9638b/ios), [automation setup](https://support.apple.com/guide/shortcuts/apdfbdbd7123/ios), and [automatic execution settings](https://support.apple.com/guide/shortcuts/apd602971e63/ios) describe the supported workflow.
+In the scheme menu at the top of Xcode, select **MorningResetShortcuts**. The installed app will be named **Morning Reset Shortcuts**.
 
-This is an interruption, not a system app lock. The selected app may appear briefly, an already-open app is not closed at the nightly time, and the user can disable the automation or use the in-app bypass. Shortcuts timing/reliability must be tested on a real iPhone. Free Personal Team provisioning expires after seven days; rebuild expired installations through Xcode and recheck the action. This development route does not provide App Store/TestFlight distribution. See [Apple's account limits](https://developer.apple.com/help/account/basics/about-your-developer-account).
+## 2. Set up signing for your own iPhone
 
-## Run the free demo on your iPhone
+1. Open **Xcode → Settings → Apple Accounts** (called **Accounts** in some versions), and add your Apple Account.
+2. In Xcode's left sidebar, click the blue **MorningReset** project icon. Under **TARGETS**, select **MorningResetShortcuts**.
+3. Open **Signing & Capabilities**, leave **Automatically manage signing** enabled, and choose your **Personal Team** from the **Team** menu.
+4. Give your copy a unique bundle identifier. In the project's `Config` folder, create a plain-text file named **`Local.xcconfig`** containing this line, replacing `yourname` with your own unique name:
 
-1. Open `MorningReset.xcodeproj` in **Xcode on your Mac**. Select **MorningResetDemo** in the scheme menu at the top.
-2. Sign in under **Xcode → Settings → Apple Accounts**. The demo uses your **Personal Team** and automatic signing. In this workspace, the selected team and a unique bundle ID are already saved in the ignored `Config/Local.xcconfig`. For another checkout, copy the example config and enter your own team and unique base bundle ID.
-3. Connect your iPhone, unlock it, and accept **Trust This Computer** if asked. Choose your iPhone in the destination menu beside the scheme, then press **⌘R**. Follow iOS's Developer Mode prompt if one appears.
-4. The installed app is named **Morning Reset Demo**. Complete its short onboarding, edit the routine, and tap **I'm awake**. For a quick first check, use one 15-second task. The final confirmation starts the real ten-minute wait; reopen the app after the deadline to finish the session.
+   ```xcconfig
+   BASE_BUNDLE_IDENTIFIER = com.yourname.morningreset
+   ```
 
-This build has no Screen Time entitlement, App Group, or embedded extensions. It stores its own local data, leaves other apps available, and never earns protected streak credit. Its saved nightly time is only a preview. The full app remains a separate scheme and installation.
+5. Return to **Signing & Capabilities**. The Shortcuts target's bundle identifier should now be **`com.yourname.morningreset.Shortcuts`**, using the name you entered. Let Xcode finish creating its signing profile.
 
-## Run the full Screen Time app on your iPhone
+`Config/Base.xcconfig` already loads this optional local file. `Config/Local.xcconfig` is ignored by Git, so your identifiers stay local. Selecting your team in Xcode is sufficient; you do not need to look up a Team ID or configure an App Group for the Shortcuts edition. If you already have a working local configuration, keep it.
 
-1. Install the current stable **Xcode** from Apple, launch it, and complete its first-run setup and iOS platform download. Set its command-line tools under **Xcode → Settings → Locations**. Check `xcodebuild -version` from Terminal.
-2. Open `MorningReset.xcodeproj`. Select the shared **MorningReset** scheme.
-3. In **Xcode → Settings → Apple Accounts**, sign in to your Apple account. **The full Screen Time app requires an Apple Developer Program team; a free Personal Team cannot provision this configuration.** Apple documents Family Controls development access through the [Apple Developer Program](https://developer.apple.com/documentation/xcode/configuring-family-controls). [Membership costs 99 USD per year](https://developer.apple.com/programs/enroll/) in the United States. Use the free demo above to review routine UI first.
-4. Copy `Config/Local.xcconfig.example` to `Config/Local.xcconfig`. Replace the example team, base bundle ID, and App Group with your own registered values. This local file is ignored by Git. Do not commit signing credentials.
-5. In **Signing & Capabilities**, check **MorningReset**, **ActivityMonitor**, and **ShieldConfiguration**. All three must use the same team, have **Family Controls** and **App Groups**, and select the same registered App Group. Extension bundle IDs must begin with the app's bundle ID. If Xcode cannot provision a capability, resolve that in your developer account; a source entitlement alone does not grant access.
-6. Connect and trust your iPhone. Enable **Developer Mode** if iOS requests it. Select the iPhone as the run destination, then press **⌘R**.
-7. In onboarding, authorize Screen Time, expand categories and select one individual distracting app, set the nightly time, **enable the nightly schedule**, keep a short routine, and optionally enable notifications.
-8. First run **Settings → Screen Time feasibility checks**. Verify manual shielding/release, then scheduled shielding with Morning Reset terminated. Complete the checklist in [Docs/VALIDATION.md](Docs/VALIDATION.md) before calling protection verified.
+If Xcode says the bundle identifier is unavailable, change `yourname` to something more distinctive. If it requests Family Controls or App Groups, check that both the selected **scheme** and the **target** are **MorningResetShortcuts**.
 
-For a short routine test, use one 15-second task. The waiting period remains ten minutes in every mode. To test a lock soon, adjust tonight to a few minutes ahead. Do not expect an app that is suspended to execute its own countdown.
+## 3. Install and launch on your iPhone
 
-The simulator can help review UI and run core tests; it is not evidence of real Screen Time behavior. The in-app **demo** runs real routine logic but applies no shields and awards no protected streak. **Prototype** controls apply actual shields and also award no protected streak.
+1. Connect your iPhone to the Mac and unlock it. Accept **Trust This Computer** on the iPhone if asked.
+2. In the run-destination menu beside the Xcode scheme, choose **your iPhone**, rather than a simulator or a generic iOS device.
+3. If Xcode requests Developer Mode, follow its instructions. On the iPhone, open **Settings → Privacy & Security → Developer Mode**, turn it on, restart when prompted, and confirm after restarting. If the setting is missing, first connect the phone and attempt to run from Xcode. See [Apple's Developer Mode instructions](https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device).
+4. In Xcode, press **⌘R**, or click the triangular **Run** button. Xcode builds, installs, and launches **Morning Reset Shortcuts**.
+5. If iOS shows **Untrusted Developer**, open **Settings → General → VPN & Device Management**, select the developer entry for your Apple Account, and follow the trust prompt. Then open the app again.
 
-## Development workflow
+Once installed, you can open the app from your Home Screen without keeping Xcode or your Mac connected. Keep the same signing team and bundle identifier for later builds so they update the same installation.
 
-Every change starts on a new branch from the latest `main`, including features, fixes, documentation, and configuration. Push the branch and open a pull request describing the change and relevant validation. Keep `main` free of direct pushes.
+**Free signing needs renewal:** Personal Team provisioning profiles expire seven days after issuance. If the app stops launching, reconnect the iPhone, open the same project, select **MorningResetShortcuts** and your iPhone, and press **⌘R** again. Rebuild the existing installation rather than deleting it, and check your automation afterward. [Apple documents this expiry and reinstall requirement](https://developer.apple.com/help/account/basics/about-your-developer-account).
 
-The project owner must explicitly confirm before a pull request is merged. A request to implement a feature does not authorize its merge. Do not enable auto-merge; address review feedback on the same branch and present the updated result for approval.
+## 4. Connect your distracting apps once
 
-## Tests and project maintenance
+The app includes the same instructions during onboarding. Open **Start step-by-step tutorial**, or revisit **Settings → App redirects → Step-by-step setup & test** at any time. Your place in the guide is saved.
 
-With Swift Command Line Tools (including this environment):
+On your iPhone:
+
+1. Open **Shortcuts** and tap **Automation** at the bottom.
+2. Tap **+** or **New Automation**. If you see **Create Personal Automation**, select it.
+3. Find and tap **App** in the trigger list. You can search for App; in the layout used during testing, its row is below CarPlay and above Wallet.
+4. Tap **Choose** beside App. Select all the distracting apps you want to interrupt, then tap **Done**. Leave **Morning Reset Shortcuts** and **Shortcuts** unselected to avoid a loop.
+5. Select **Is Opened**, leave **Is Closed** unselected, choose **Run Immediately**, and tap **Next**. On older layouts, turn off **Ask Before Running** when saving instead.
+6. Choose **New Blank Automation** or **Create New Shortcut** if prompted, then use **Add Action** or **Search Actions**. Search for **Check Morning Redirect** and add the action from **Morning Reset Shortcuts**.
+7. Search for **If** and add it below the check. Use the result of **Check Morning Redirect** as its input; select that result using **Select Variable** if necessary. It must test **true / Yes**. Some versions display only **If Check Morning Redirect** for a Boolean input. If it says **Has Any Value**, tap the input variable and change its type to **Boolean** first: a No result still has a value.
+8. Add **Open App**, choose **Morning Reset Shortcuts**, and drag that action **between If and Otherwise**. Leave Otherwise empty.
+9. Tap **Done** or the blue **checkmark** to save, depending on your iOS version.
+
+The final action order should be:
+
+```text
+Check Morning Redirect
+If Check Morning Redirect is true / Yes
+    Open App → Morning Reset Shortcuts
+Otherwise
+    [leave empty]
+End If
+```
+
+**Open App must be inside If, above Otherwise.** If it sits after End If, it will open Morning Reset even when the routine is finished.
+
+You create one automation for several apps together, once per device. To change the selected apps later, edit that automation in Shortcuts. The app cannot install or inspect personal automations. Apple's [app-trigger guide](https://support.apple.com/guide/shortcuts/setting-triggers-apde31e9638b/ios) and [automatic execution settings](https://support.apple.com/guide/shortcuts/apd602971e63/ios) describe the system controls.
+
+## 5. Test the connection and finish setup
+
+1. Return to the last step of the in-app guide and tap **Start 60-second redirect test**.
+2. During those 60 seconds, open one of the distracting apps you selected. It should send you back to **Morning Reset Shortcuts**.
+3. If you saw the return, tap **I saw the redirect · finish setup**. A successful test check remains confirmable after the timer expires. This confirmation is your report of what happened.
+4. Finish onboarding: choose your recurring nightly time, edit your routine, and enable reminders if you want them.
+5. **Check the other direction too.** After the test ends, before starting a routine and while no nightly period is active, open a selected app again. It should stay open. In **Settings → Right now**, **Last check** should read **No · allow other apps**.
+
+If a routine period is already active, a Yes result is expected until you complete it or choose **Skip without completing**.
+
+## Using it each morning
+
+At your nightly time, the next attempt to open a selected app begins or checks the redirect period. An app already open on screen is not forcibly closed.
+
+Tap **I'm awake** in Morning Reset to begin your routine. Tap **Start** for each task, then **Complete** when its countdown ends. Tasks are self-confirmed; the app does not verify exercise or hygiene. The final task starts the ten-minute pause automatically.
+
+You can leave the app during the pause. After the saved deadline, the next automation check allows your other apps. A newer nightly period takes precedence over an old routine. Notifications are optional reminders; they do not execute an unlock. You can choose **Skip without completing** to end the current period.
+
+Routine edits apply to your next session, and saved progress survives relaunch. Local history records your routines; this edition does not award protected Screen Time streak credit.
+
+## Troubleshooting
+
+| Problem | What to check |
+| --- | --- |
+| Xcode asks for Screen Time capabilities | Select **MorningResetShortcuts** as both the scheme and signing target. |
+| Signing fails | Add your Apple Account, select your Personal Team, and use a unique base bundle identifier in `Config/Local.xcconfig`. |
+| iPhone is missing from the destination menu | Unlock and trust it, check the cable, and use an Xcode version that supports its iOS version. |
+| Check Morning Redirect is missing in Shortcuts | Launch the installed app once, reopen Shortcuts, and search under its Apps actions. Rebuild if the installation has expired. |
+| A selected app never redirects during the test | Start a fresh 60-second test; check the selected apps, Is Opened, Run Immediately, the If input, and the Open App target. |
+| An app redirects after the wait or test | In **Settings → Right now**, read **Last check**. If it says **No**, check that If tests the Boolean result, Open App is inside the true branch, and no second automation opens Morning Reset for the same apps. |
+| Last check says Yes after a completed session | Check whether a new nightly period or a setup test is active. A newer night starts a fresh period. |
+| Setup confirmation is disabled | Start the test and open a selected app while it is running. Confirm only after observing the return. |
+| The app stopped launching after several days | Reconnect to Xcode and run the same scheme with the same signing identity and bundle identifier to renew the installation. |
+
+Shortcuts redirects are voluntary interruptions. They may be delayed, may briefly show the distracting app, and can be disabled in Shortcuts. The app cannot guarantee interception if the automation fails to run.
+
+## Other schemes in the repository
+
+| Scheme | Purpose |
+| --- | --- |
+| **MorningResetShortcuts** | The edition covered by this installation guide: routines plus voluntary app redirects, with free Personal Team signing. |
+| **MorningResetDemo** | Routine-only demo with separate local data; no redirects, app shields, or protected streak credit. |
+| **MorningReset** | Original Screen Time implementation retained for entitlement-based development. Requires a suitable Apple Developer Program team and capabilities; a free Personal Team cannot provision it. It is not the installation path above. |
+
+The Screen Time implementation and extensions are documented in [feasibility notes](Docs/FEASIBILITY.md), [architecture](Docs/ARCHITECTURE.md), and the original [specification](SPEC.md). It uses a shared App Group and Family Controls capabilities, with foreground release after the ten-minute wait. Screen Time distribution requires [Apple's Family Controls entitlement approval](https://developer.apple.com/documentation/familycontrols/requesting-the-family-controls-entitlement). No App Store or TestFlight submission has been made.
+
+## Validation and development
+
+All **37 core tests** passed through the command-line runner and actual XCTest. All three editions compiled in unsigned generic iOS builds with Xcode 27. The Shortcuts edition was also built and launched on a signed iPhone, and the project owner reported working task completion and redirects that stop after the pause. These reports do not establish behavior across all devices; notifications, reboot handling, accessibility, and the full Screen Time implementation still need their physical-device checks. See [the validation record](Docs/VALIDATION.md).
+
+From the project folder, run:
 
 ```sh
 python3 Scripts/test_core.py
 python3 Scripts/check_project.py
 ```
 
-The command-line runner compiles the same test methods used by XCTest with a small assertion adapter. It tests real core code, including concurrent file transactions; it does not simulate the Screen Time frameworks.
-
-With full Xcode selected:
+With full Xcode selected, you can also run Foundation XCTest and build the Shortcuts edition without signing:
 
 ```sh
 swift test --scratch-path /tmp/morning-reset-build
-xcodebuild -list -project MorningReset.xcodeproj
-xcodebuild -project MorningReset.xcodeproj -scheme MorningReset \
-  -destination 'generic/platform=iOS Simulator' \
-  -derivedDataPath /tmp/morning-reset-ios-build CODE_SIGNING_ALLOWED=NO build
-xcodebuild -project MorningReset.xcodeproj -scheme MorningResetDemo \
-  -destination 'generic/platform=iOS' \
-  -derivedDataPath /tmp/morning-reset-demo-build CODE_SIGNING_ALLOWED=NO build
 xcodebuild -project MorningReset.xcodeproj -scheme MorningResetShortcuts \
   -destination 'generic/platform=iOS' \
   -derivedDataPath /tmp/morning-reset-shortcuts-build CODE_SIGNING_ALLOWED=NO build
 ```
 
-For the app-hosted XCTest target, choose an installed iPhone simulator from `xcrun simctl list devices available`, then run:
+The unsigned build checks compilation; use Xcode's signed Run flow above to install on your phone.
 
-```sh
-xcodebuild -project MorningReset.xcodeproj -scheme MorningReset \
-  -destination 'platform=iOS Simulator,name=YOUR_INSTALLED_IPHONE_SIMULATOR' \
-  -derivedDataPath /tmp/morning-reset-ios-tests CODE_SIGNING_ALLOWED=NO test
-```
+`Sources/MorningResetCore` contains Foundation-only session, calendar, redirect, history, and locked-storage logic. `MorningReset/App`, `Views`, and `Services` contain the native UI, App Intent, and reminders. The Shortcuts edition stores authoritative state in its own local JSON file under a cross-process lock, with a SwiftData history mirror. It has no Screen Time entitlement, App Group, or embedded extensions. See [architecture and calendar policies](Docs/ARCHITECTURE.md).
 
-Regenerate the committed project after adding files:
+After adding source files, regenerate the committed project and shared schemes:
 
 ```sh
 python3 Scripts/generate_project.py
 ```
 
-This deterministic generator uses Python's standard library; XcodeGen/CocoaPods are not required. Personal signing settings belong in the ignored local config, so generation preserves them. To regenerate the icon on macOS, run `swift Scripts/render_icon.swift`.
-
-## Architecture
-
-| Location | Responsibility |
-| --- | --- |
-| `Sources/MorningResetCore` | Session state machine, calendar/streak and voluntary redirect rules, injectable clock, locked atomic JSON storage |
-| `MorningReset/App` | Observable app model and native app entry point |
-| `MorningReset/Views` | Onboarding, three tabs, task editor, countdown, history, device prototype controls |
-| `MorningReset/Services` | Screen Time integration, Shortcuts App Intent, serialized reminders, main-app SwiftData history mirror |
-| `Extensions/ActivityMonitor` | Begin/reconcile nightly protection without the main app running |
-| `Extensions/ShieldConfiguration` | Native shield appearance within Apple's customization limits |
-
-The shared App Group file is authoritative for the routine, active session, protection period, and history. A cross-process file lock serializes app/extension mutations. State is atomically saved before shield changes are applied, while still holding the lock. The extension never opens SwiftData. SwiftData mirrors completed history inside the main app; a mirror error never deletes shared history. See [architecture and calendar policies](Docs/ARCHITECTURE.md).
-
-The standalone demo compiles with `MORNING_RESET_DEMO`, excludes the real Screen Time bridge, and uses its own Application Support directory instead of the App Group. It shares the routine engine and SwiftUI views while skipping protection onboarding and controls.
-
-The independent Shortcuts edition compiles with `MORNING_RESET_SHORTCUTS` and shares the demo's Screen Time isolation. Its App Intent reads and reconciles the same local JSON under the file lock; it does not construct UI or open the SwiftData mirror. A separate redirect-period UUID prevents an old routine from ending a newer night. Intent check failures throw an error rather than pretending a successful check. The app cannot guarantee interception if Shortcuts fails to run.
-
-## Platform limitations and TestFlight preparation
-
-- Release uses foreground reconciliation after the ten-minute deadline. It never uses a ten-minute DeviceActivity monitoring interval or assumes notifications can run code.
-- DeviceActivity callbacks are delivered by iOS. Registration is reported separately from applied shields; actual timing must be checked on physical hardware. Revoked Screen Time access means protection is inactive.
-- A reboot retains saved state, but the shared file is available only after the device's first unlock. ManagedSettings persistence and callbacks across reboot need device validation.
-- Individual authorization is voluntary and bypassable. Activity completion is self-confirmed, and changing the system clock can affect wall-clock deadlines.
-- The daily schedule and one-night adjustment are implemented. Separate weekday/weekend schedules are deferred to keep version one simple.
-
-Before TestFlight/App Store distribution, request Apple's **Family Controls distribution approval for the app and relevant extension identifiers**; confirm the resulting provisioning support and profiles. [Apple's entitlement instructions](https://developer.apple.com/documentation/familycontrols/requesting-the-family-controls-entitlement) explain this requirement. Check all three signed targets, run the physical-device matrix, verify privacy declarations against the final app, update version/build numbers, and archive using the shared scheme. No TestFlight/App Store upload or submission has been performed.
-
-The original brief is preserved in `Morning-Reset-Codex-Prompt.md` and at the beginning of [SPEC.md](SPEC.md), followed by the approved Shortcuts amendment. Project guidance is in [AGENTS.md](AGENTS.md).
+Every change starts on a new branch from the latest `main`. Push the branch, open a pull request with relevant validation, and wait for the project owner's explicit confirmation before merging. Keep personal signing settings out of commits. See [AGENTS.md](AGENTS.md) for repository guidance.

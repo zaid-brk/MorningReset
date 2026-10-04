@@ -191,3 +191,13 @@ Explain that Family Controls distribution requires Apple approval for the releva
 Start with a brief implementation plan and the Screen Time feasibility prototype. Then continue implementing the app in manageable stages. Make routine technical decisions independently and only ask me about genuine product blockers or choices that materially change the requested experience.
 
 At completion, summarize what works, what was tested, what needs a real-device check, and the exact next steps for running it on my iPhone.
+
+## Approved amendment — Shortcuts redirects (2026-10-03)
+
+The user approved an alternative to entitled app blocking: a voluntary Shortcuts automation that sends users back to Morning Reset when they open selected distracting apps during a nightly routine period. Include a clear step-by-step in-app tutorial during onboarding and in Settings. Users configure one app-opening automation per device and can choose several apps together. The app supplies a Boolean App Intent; the automation runs it, then uses If → Open App to redirect only when requested.
+
+Deliver this as the independent `MorningResetShortcuts` target, with Personal Team signing support, no Screen Time frameworks or entitlements, no App Groups, no embedded extensions, and separate local storage. Preserve the existing Screen Time and demo editions; the demo remains demo-only and never redirects other apps.
+
+Retain the timed, self-confirmed routine and ten-minute pause. Evaluate the recurring nightly schedule and saved deadlines on app entry and each intent invocation. The next check after an elapsed wait permits the distracting app without requiring a separate foreground return. A newer nightly period takes precedence over any old routine. Notifications remain reminders and never execute an unlock. Provide an explicit bypass and a time-limited setup test.
+
+Describe redirects accurately: they are voluntary, may be delayed or fail, may briefly show the distracting app, cannot close an already-foreground app at the nightly time, and can be disabled in Shortcuts. Do not claim the app can install or verify the automation. Setup status is the user's confirmation following a test. Shortcuts routines use nonprotected session/history semantics and never earn protected streak credit. Personal Team installation expiry remains a development-signing limitation; no distribution is authorized by this amendment.

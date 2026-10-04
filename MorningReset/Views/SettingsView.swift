@@ -1,5 +1,5 @@
 import SwiftUI
-#if !MORNING_RESET_DEMO
+#if !MORNING_RESET_DEMO && !MORNING_RESET_SHORTCUTS
 import FamilyControls
 #endif
 import UIKit
@@ -14,27 +14,57 @@ struct SettingsView: View {
                 Toggle("Timer reminders", isOn: Binding(get: { model.state.notificationsEnabled }, set: { value in
                     if value { Task { await model.enableNotifications() } } else { model.disableNotifications() }
                 }))
-                Text(BuildMode.isDemo ? "Reminders ask you to return to the demo to confirm a task or finish your ten-minute pause." : "Task reminders invite you to confirm. Wait reminders ask you to open Morning Reset to release apps after ten minutes.")
+                Text(BuildMode.usesShortcuts ? "Task reminders invite you to confirm. After the ten-minute pause, the next automation check stops redirecting for that period. Reminders do not execute a redirect or unlock." : BuildMode.isDemo ? "Reminders ask you to return to the demo to confirm a task or finish your ten-minute pause." : "Task reminders invite you to confirm. Wait reminders ask you to open Morning Reset to release apps after ten minutes.")
                     .font(.subheadline).foregroundStyle(.secondary)
                 Button("Open iPhone Settings") {
                     if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
                 }
             }
             Section {
-                if !BuildMode.isDemo { NavigationLink("Screen Time feasibility checks") { FeasibilityView() } }
+                if !BuildMode.usesLocalStorage { NavigationLink("Screen Time feasibility checks") { FeasibilityView() } }
                 NavigationLink("Routine history") { HistoryView() }
             } header: { Text("About & testing") } footer: {
                 Text("Your routine and history stay on this iPhone. No account, backend, or activity verification.")
             }
         }.scrollContentBackground(.hidden).background(ResetTheme.background).navigationTitle("Settings")
-            .confirmationDialog(BuildMode.isDemo ? "End this demo session?" : "Unlock without completing?", isPresented: $confirmBypass, titleVisibility: .visible) {
-                Button(BuildMode.isDemo ? "End demo" : "Unlock without completing", role: .destructive) { model.bypass() }
+            .confirmationDialog(BuildMode.usesShortcuts ? "Skip this redirect period?" : BuildMode.isDemo ? "End this demo session?" : "Unlock without completing?", isPresented: $confirmBypass, titleVisibility: .visible) {
+                Button(BuildMode.usesShortcuts ? "Skip without completing" : BuildMode.isDemo ? "End demo" : "Unlock without completing", role: .destructive) { model.bypass() }
                 Button("Cancel", role: .cancel) {}
-            } message: { Text(BuildMode.isDemo ? "The demo session will be recorded as bypassed." : "The current protection period will end. This bypass won’t add to your streak.") }
+            } message: { Text(BuildMode.usesShortcuts ? "Redirects stop for the current period. The bypass is saved without protected streak credit." : BuildMode.isDemo ? "The demo session will be recorded as bypassed." : "The current protection period will end. This bypass won’t add to your streak.") }
     }
 
     @ViewBuilder private var protectionSections: some View {
-        if BuildMode.isDemo {
+        if BuildMode.usesShortcuts {
+            Section("App redirects") {
+                Label(model.redirectSettings.setupConfirmed ? "Setup confirmed by you" : "Setup not confirmed",
+                      systemImage: model.redirectSettings.setupConfirmed ? "checkmark.circle" : "exclamationmark.circle")
+                NavigationLink { ShortcutSetupView() } label: {
+                    Label("Step-by-step setup & test", systemImage: "list.number")
+                }
+                Text("Selected apps are chosen in Shortcuts, not here. Reopen your automation there to change them. This app cannot verify that it is still connected or enabled.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+            Section("Nightly redirects") { ScheduleControl() }
+            Section("Right now") {
+                Label(model.redirectSettings.period?.active == true && model.redirectSettings.enabled ? "A redirect period is active" : "No active routine redirect period",
+                      systemImage: "arrow.uturn.backward")
+                if let requested = model.redirectSettings.lastCheckRequestedRedirect,
+                   let checked = model.redirectSettings.lastCheckAt {
+                    LabeledContent("Last check", value: requested ? "Yes · return here" : "No · allow other apps")
+                    Text("Checked at \(checked.formatted(date: .omitted, time: .standard)).")
+                        .font(.caption).foregroundStyle(.secondary)
+                    if !requested {
+                        Text("If an app still sends you here, check the automation in Shortcuts: Open App belongs inside If, and If must test the Boolean result, not whether a value exists. Also check for a second automation for the same apps.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
+                }
+                Text("Your automation checks the schedule when a selected app opens. It does not close an app already on screen or impose an iOS lock. Redirects may be delayed or fail if the automation or installation is unavailable.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+                if model.activeSession != nil || model.redirectSettings.period?.active == true {
+                    Button("Skip without completing", role: .destructive) { confirmBypass = true }.frame(minHeight: 44)
+                }
+            }
+        } else if BuildMode.isDemo {
             Section("About this demo") {
                 Label("Other apps stay available", systemImage: "info.circle")
                 Text("Test your routine, saved timers, and history. This free demo does not block apps, run nightly protection, or award protected streaks.")
@@ -67,7 +97,7 @@ struct SettingsView: View {
 }
 
 struct AppSelectionControl: View {
-    #if MORNING_RESET_DEMO
+    #if MORNING_RESET_DEMO || MORNING_RESET_SHORTCUTS
     var body: some View { Text("App selection is available in the full Screen Time build.").foregroundStyle(.secondary) }
     #else
     @EnvironmentObject private var model: AppModel
@@ -99,19 +129,22 @@ struct ScheduleControl: View {
     @State private var showingTonight = false
     var body: some View {
         Group {
-            if !BuildMode.isDemo {
+            if BuildMode.usesShortcuts {
+                Toggle("Enable app redirects", isOn: Binding(get: { model.redirectSettings.enabled }, set: { model.setRedirectsEnabled($0) }))
+                    .disabled(!model.redirectSettings.setupConfirmed)
+            } else if !BuildMode.isDemo {
             Toggle("Enable nightly protection", isOn: Binding(get: { model.state.scheduleEnabled }, set: { enabled in
                 model.setSchedule(time: ResetTheme.lockTime(chosenTime), override: model.state.tonightOverride, enabled: enabled)
             })).disabled(!model.state.accessAvailable || model.state.selectionCount == 0)
             }
-            DatePicker("Usual lock time", selection: $chosenTime, displayedComponents: .hourAndMinute)
+            DatePicker(BuildMode.usesShortcuts ? "Nightly redirect time" : "Usual lock time", selection: $chosenTime, displayedComponents: .hourAndMinute)
             Button("Save usual time") {
                 model.setSchedule(time: ResetTheme.lockTime(chosenTime), override: model.state.tonightOverride,
                                   enabled: model.state.scheduleEnabled)
             }.frame(minHeight: 44)
-            Text(BuildMode.isDemo ? "This saves a preview time only. No nightly restriction runs in the demo." : "Repeats every day. Changing the schedule does not end protection that has already started.")
+            Text(BuildMode.usesShortcuts ? "Repeats daily. Enabling starts with the next nightly time; starting a routine also starts redirects. Changing the time does not end an active period. No nightly automation is needed." : BuildMode.isDemo ? "This saves a preview time only. No nightly restriction runs in the demo." : "Repeats every day. Changing the schedule does not end protection that has already started.")
                 .font(.caption).foregroundStyle(.secondary)
-            if !BuildMode.isDemo {
+            if !BuildMode.usesLocalStorage {
             Button("Adjust tonight only") { showingTonight = true }.frame(minHeight: 44)
             if let adjustment = model.state.tonightOverride,
                adjustment.dateKey == CalendarRules.dateKey(Date(), calendar: CalendarRules.localCalendar()) {
@@ -210,7 +243,7 @@ struct HistoryView: View {
                     Text(entry.localDate).font(.headline)
                     Text(outcome(entry)).foregroundStyle(.secondary)
                     if entry.isDemo || entry.isPrototype {
-                        Text(entry.isDemo ? "Demo · no streak credit" : "Prototype · no streak credit").font(.caption)
+                        Text(BuildMode.usesShortcuts ? "Shortcuts routine · no protected streak credit" : entry.isDemo ? "Demo · no streak credit" : "Prototype · no streak credit").font(.caption)
                     }
                 }.padding(.vertical, 6).accessibilityElement(children: .combine)
             }
@@ -220,7 +253,7 @@ struct HistoryView: View {
         if entry.protectedSuccess { return "Protected morning complete" }
         switch entry.outcome {
         case .bypassed: return "Bypassed"
-        case .interrupted: return "Interrupted by a new protection period"
+        case .interrupted: return BuildMode.usesShortcuts ? "Interrupted by a new redirect period" : "Interrupted by a new protection period"
         default: return "Complete · no protected streak credit"
         }
     }

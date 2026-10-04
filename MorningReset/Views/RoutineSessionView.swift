@@ -8,8 +8,18 @@ struct RoutineSessionView: View {
     private var waiting: Bool { session.phase == .waitingToUnlock }
 
     var body: some View {
-        VStack(spacing: 24) {
-            if (session.isDemo && !BuildMode.isDemo) || session.isPrototype {
+        TimelineView(.periodic(from: .now, by: 1)) { timeline in
+            sessionContent(at: timeline.date)
+        }
+    }
+
+    private func sessionContent(at now: Date) -> some View {
+        let canComplete = session.canConfirmTask(at: now)
+        return VStack(spacing: 24) {
+            if BuildMode.usesShortcuts && !model.redirectSettings.enabled {
+                Label("App redirects are paused", systemImage: "pause.circle")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            } else if (session.isDemo && !BuildMode.usesLocalStorage) || session.isPrototype {
                 Label(session.isDemo ? "Demo · no app restrictions or streak credit" : "Prototype · real shields, no streak credit", systemImage: "info.circle")
                     .font(.subheadline).foregroundStyle(.secondary)
             }
@@ -19,7 +29,7 @@ struct RoutineSessionView: View {
             }
             if waiting {
                 Eyebrow(text: "Room to breathe")
-                Text(session.isDemo ? "Routine complete. Take ten minutes for yourself." : "Routine complete. Your apps unlock in 10 minutes.")
+                Text(BuildMode.usesShortcuts && model.redirectSettings.enabled ? "Routine complete. Redirects end after ten minutes." : session.isDemo ? "Routine complete. Take ten minutes for yourself." : "Routine complete. Your apps unlock in 10 minutes.")
                     .font(.title2.bold()).multilineTextAlignment(.center)
                 Text("You can put your phone down.").foregroundStyle(.secondary)
             } else {
@@ -30,19 +40,17 @@ struct RoutineSessionView: View {
                     Text(task.title).font(.largeTitle.bold()).multilineTextAlignment(.center)
                 }
             }
-            TimelineView(.periodic(from: .now, by: 1)) { timeline in
-                let total = waiting ? 600 : session.currentTask?.duration ?? 15
-                let deadline = waiting ? session.unlockDeadline : session.taskDeadline
-                let remaining = deadline.map { max(0, $0.timeIntervalSince(timeline.date)) } ?? total
-                CountdownRing(remaining: remaining, total: total, ready: session.phase == .taskReady)
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: session.phase)
-            }
+            let total = waiting ? 600 : session.currentTask?.duration ?? 15
+            let deadline = waiting ? session.unlockDeadline : session.taskDeadline
+            let remaining = deadline.map { max(0, $0.timeIntervalSince(now)) } ?? total
+            CountdownRing(remaining: remaining, total: total, ready: session.phase == .taskReady)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: session.phase)
             if waiting {
                 ResetCard {
                     VStack(alignment: .leading, spacing: 8) {
-                        Label(session.isDemo ? "Return after your ten-minute pause" : "Open Morning Reset after the wait", systemImage: "hand.tap")
+                        Label(BuildMode.usesShortcuts ? "Your progress is saved" : session.isDemo ? "Return after your ten-minute pause" : "Open Morning Reset after the wait", systemImage: "hand.tap")
                             .font(.headline)
-                        Text(session.isDemo ? "Your deadline is saved even if you close the demo. Come back after it ends to finish the session. Other apps stay available throughout." : "The ten-minute deadline is saved. Your apps release when you next open this app after it ends; the optional reminder does not unlock them.")
+                        Text(BuildMode.usesShortcuts ? "You can close this app. After the saved deadline, the next automation check stops redirecting for this period. A newer nightly period takes precedence. Reminders do not execute an unlock." : session.isDemo ? "Your deadline is saved even if you close the demo. Come back after it ends to finish the session. Other apps stay available throughout." : "The ten-minute deadline is saved. Your apps release when you next open this app after it ends; the optional reminder does not unlock them.")
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
                 }
@@ -52,16 +60,16 @@ struct RoutineSessionView: View {
                         .font(.subheadline).foregroundStyle(.secondary)
                     PrimaryButton(title: "Start", symbol: "play.fill") { model.startTask() }
                 } else {
-                    Text(session.phase == .awaitingConfirmation ? "Take your time. Confirm when you’ve finished." : "Complete becomes available when the timer ends.")
+                    Text(canComplete ? "Take your time. Confirm when you’ve finished." : "Complete becomes available when the timer ends.")
                         .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                    PrimaryButton(title: "Complete", symbol: "checkmark", disabled: session.phase != .awaitingConfirmation) { model.completeTask() }
+                    PrimaryButton(title: "Complete", symbol: "checkmark", disabled: !canComplete) { model.completeTask() }
                 }
             }
-            Button(session.isDemo ? "End demo without completing" : "Unlock without completing") { confirmBypass = true }
+            Button(BuildMode.usesShortcuts ? "Skip without completing" : session.isDemo ? "End demo without completing" : "Unlock without completing") { confirmBypass = true }
                 .font(.subheadline).foregroundStyle(.secondary).frame(minHeight: 44)
         }.frame(maxWidth: .infinity).padding(.vertical, 12)
-        .confirmationDialog(session.isDemo ? "End this demo session?" : "Unlock without completing?", isPresented: $confirmBypass, titleVisibility: .visible) {
-            Button(session.isDemo ? "End demo" : "Unlock without completing", role: .destructive) { model.bypass() }
+        .confirmationDialog(BuildMode.usesShortcuts ? "Skip this redirect period?" : session.isDemo ? "End this demo session?" : "Unlock without completing?", isPresented: $confirmBypass, titleVisibility: .visible) {
+            Button(BuildMode.usesShortcuts ? "Skip without completing" : session.isDemo ? "End demo" : "Unlock without completing", role: .destructive) { model.bypass() }
             Button("Keep going", role: .cancel) {}
         } message: { Text("This session will be recorded as bypassed and won’t add to your routine streak.") }
     }

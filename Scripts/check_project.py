@@ -25,7 +25,7 @@ for identity, record in objects.items():
     if record["isa"] == "PBXFileReference" and record.get("sourceTree") == "<group>":
         assert (root / record["path"]).exists(), record["path"]
 targets = [record for record in objects.values() if record["isa"] == "PBXNativeTarget"]
-assert {target["name"] for target in targets} == {"MorningReset", "MorningResetDemo", "ActivityMonitor", "ShieldConfiguration", "MorningResetTests"}
+assert {target["name"] for target in targets} == {"MorningReset", "MorningResetDemo", "MorningResetShortcuts", "ActivityMonitor", "ShieldConfiguration", "MorningResetTests"}
 for target in targets:
     sources = []
     for phase_id in target["buildPhases"]:
@@ -38,14 +38,16 @@ for target in targets:
         assert "Sources/MorningResetCore/RoutineEngine.swift" in sources
     if target["name"] == "MorningReset":
         assert set(str(path.relative_to(root)) for path in (root / "MorningReset").rglob("*.swift")).issubset(sources)
-    if target["name"] == "MorningResetDemo":
+    if target["name"] in {"MorningResetDemo", "MorningResetShortcuts"}:
         assert not target["dependencies"], "Free demo must not build Screen Time extensions"
         assert "MorningReset/Services/ScreenTimeBridge.swift" not in sources
         assert "MorningReset/Services/DemoScreenTimeBridge.swift" in sources
         for config_id in objects[target["buildConfigurationList"]]["buildConfigurations"]:
             settings = objects[config_id]["buildSettings"]
             assert "CODE_SIGN_ENTITLEMENTS" not in settings
-            assert "MORNING_RESET_DEMO" in settings["SWIFT_ACTIVE_COMPILATION_CONDITIONS"]
+            condition = "MORNING_RESET_DEMO" if target["name"] == "MorningResetDemo" else "MORNING_RESET_SHORTCUTS"
+            assert condition in settings["SWIFT_ACTIVE_COMPILATION_CONDITIONS"]
+            assert "MorningResetAppGroup" not in plistlib.loads((root / settings["INFOPLIST_FILE"]).read_bytes())
         for phase_id in target["buildPhases"]:
             phase = objects[phase_id]
             assert phase["isa"] != "PBXCopyFilesBuildPhase"
@@ -63,9 +65,10 @@ for path in (root / "MorningReset.xcodeproj/xcshareddata/xcschemes").glob("*.xcs
     scheme = ET.parse(path)
     for reference in scheme.iter("BuildableReference"):
         assert reference.attrib["BlueprintIdentifier"] in objects
-        if path.stem == "MorningResetDemo":
-            assert reference.attrib["BlueprintName"] == "MorningResetDemo"
-assert (root / "SPEC.md").read_bytes() == (root / "Morning-Reset-Codex-Prompt.md").read_bytes()
+        if path.stem in {"MorningResetDemo", "MorningResetShortcuts"}:
+            assert reference.attrib["BlueprintName"] == path.stem
+original_spec = (root / "Morning-Reset-Codex-Prompt.md").read_bytes()
+assert (root / "SPEC.md").read_bytes().startswith(original_spec), "Preserve the original spec before approved amendments"
 swift_sources = sorted((root / "Sources").rglob("*.swift")) + sorted((root / "MorningReset").rglob("*.swift")) + sorted((root / "Extensions").rglob("*.swift"))
 subprocess.run(["swiftc", "-frontend", "-parse", *map(str, swift_sources)], check=True)
 print(f"Project checks passed: {len(targets)} targets, {len(swift_sources)} Swift files, entitlements, plists, assets, shared scheme.")

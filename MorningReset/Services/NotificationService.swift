@@ -28,7 +28,8 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
             deadline = waitDeadline
             identifier = "morning-reset.wait.\(session.id)"
             content.title = "Your ten-minute wait has ended"
-            content.body = session.isDemo ? "Open Morning Reset to finish your demo."
+            content.body = BuildMode.usesShortcuts ? "Your automation will check whether this period is complete the next time you open a selected app. A newer nightly period may still apply."
+                : session.isDemo ? "Open Morning Reset to finish your demo."
                 : "Open Morning Reset to release this session’s restriction. A newer night may still be protected."
         } else { return }
         guard deadline > Date() else { return }

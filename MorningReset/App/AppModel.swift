@@ -1,5 +1,5 @@
 import SwiftUI
-#if !MORNING_RESET_DEMO
+#if !MORNING_RESET_DEMO && !MORNING_RESET_SHORTCUTS
 import FamilyControls
 #endif
 import UIKit
@@ -11,13 +11,18 @@ final class AppModel: ObservableObject {
     @Published private(set) var monitoringActive = false
     @Published var errorMessage: String?
     @Published private(set) var storageUnavailable = false
+    @Published var selectedTab = 0
+    @Published private(set) var todayNavigationID = UUID()
     private var store: LockedStateStore?
     private var archive: HistoryArchive?
     private let notifications = NotificationService()
     private var notificationQueue: Task<Void, Never>?
     private var lastDisplayDate = CalendarRules.dateKey(Date(), calendar: CalendarRules.localCalendar())
+    private var lastSeenRedirectCheck: Date?
 
     var engine: RoutineEngine { RoutineEngine() }
+    var redirectEngine: ShortcutRedirectEngine { ShortcutRedirectEngine() }
+    var redirectSettings: ShortcutRedirectSettings { state.shortcutRedirect ?? ShortcutRedirectSettings() }
     var activeSession: MorningSession? { state.session?.isFinished == false ? state.session : nil }
     var streak: StreakSummary {
         .calculate(history: state.history, now: Date(), calendar: CalendarRules.localCalendar())
@@ -39,16 +44,27 @@ final class AppModel: ObservableObject {
             state = try store.transaction(afterCommit: ScreenTimeBridge.finishMainAppCommit) { state in
                 state.accessAvailable = ScreenTimeBridge.authorized
                 state.selectionCount = ScreenTimeBridge.selectedAppCount(in: state)
-                if BuildMode.isDemo { state.scheduleEnabled = false; state.protection = nil }
+                if BuildMode.usesLocalStorage { state.scheduleEnabled = false; state.protection = nil }
                 if state.session?.isFinished == false, state.session?.isDemo == false,
                    !ScreenTimeBridge.shieldApplied(for: state) { state.session?.eligible = false }
                 try body(&state)
+                if BuildMode.usesShortcuts { redirectEngine.reconcile(&state) }
                 return state
             }
             shieldApplied = ScreenTimeBridge.shieldApplied(for: state)
             monitoringActive = ScreenTimeBridge.isRegistered(state)
             storageUnavailable = false
             lastDisplayDate = CalendarRules.dateKey(Date(), calendar: CalendarRules.localCalendar())
+            if BuildMode.usesShortcuts, let checked = redirectSettings.lastCheckAt,
+               checked != lastSeenRedirectCheck {
+                lastSeenRedirectCheck = checked
+                if redirectSettings.lastCheckRequestedRedirect == true,
+                   redirectSettings.lastCheckWasTest != true, redirectSettings.period?.active == true {
+                    // Real redirects land on the current routine; setup tests keep the guide open.
+                    selectedTab = 0
+                    todayNavigationID = UUID()
+                }
+            }
             do { try archive?.sync(state.history) }
             catch { errorMessage = "The local history mirror could not update. Shared history remains saved: \(error.localizedDescription)" }
             queueNotifications()
@@ -58,6 +74,7 @@ final class AppModel: ObservableObject {
 
     func refresh() {
         change { state in
+            if BuildMode.usesShortcuts { redirectEngine.reconcile(&state); return }
             if state.scheduleEnabled, state.accessAvailable,
                !ScreenTimeBridge.isRegistered(state) || state.scheduleTimeZoneID != TimeZone.current.identifier {
                 do { try ScreenTimeBridge.register(&state, now: Date(), calendar: CalendarRules.localCalendar()) }
@@ -76,9 +93,14 @@ final class AppModel: ObservableObject {
         let nightIsDue = state.scheduleEnabled && state.lastHandledNight.map {
             CalendarRules.latestNight(in: state, at: now, calendar: calendar) > $0
         } == true
+        let redirectNightIsDue = BuildMode.usesShortcuts && redirectSettings.enabled
+            && redirectSettings.lastHandledNight.map {
+                CalendarRules.latestNight(in: state, at: now, calendar: calendar) > $0
+            } == true
+        let redirectTestIsDue = redirectSettings.testDeadline.map { now >= $0 } == true
         if ScreenTimeBridge.authorized != state.accessAvailable
             || ScreenTimeBridge.shieldApplied(for: state) != shieldApplied
-            || CalendarRules.dateKey(now, calendar: calendar) != lastDisplayDate || nightIsDue {
+            || CalendarRules.dateKey(now, calendar: calendar) != lastDisplayDate || nightIsDue || redirectNightIsDue || redirectTestIsDue {
             refresh()
             return
         }
@@ -90,7 +112,7 @@ final class AppModel: ObservableObject {
     }
 
     func authorize() async {
-        #if MORNING_RESET_DEMO
+        #if MORNING_RESET_DEMO || MORNING_RESET_SHORTCUTS
         errorMessage = SetupError.demoUnavailable.localizedDescription
         #else
         do { try await AuthorizationCenter.shared.requestAuthorization(for: .individual); refresh() }
@@ -98,7 +120,7 @@ final class AppModel: ObservableObject {
         #endif
     }
 
-    #if !MORNING_RESET_DEMO
+    #if !MORNING_RESET_DEMO && !MORNING_RESET_SHORTCUTS
     func saveSelection(_ selected: FamilyActivitySelection) {
         change { state in
             var appsOnly = FamilyActivitySelection()
@@ -123,6 +145,7 @@ final class AppModel: ObservableObject {
         change { state in
             state.lockTime = time
             state.tonightOverride = override
+            if BuildMode.usesShortcuts { redirectEngine.reconcile(&state); return }
             if enabled && !BuildMode.isDemo { try ScreenTimeBridge.register(&state, now: Date(), calendar: CalendarRules.localCalendar()) }
             else { ScreenTimeBridge.disableSchedule(&state) }
             engine.reconcile(&state, mayRelease: true)
@@ -132,18 +155,44 @@ final class AppModel: ObservableObject {
     func finishOnboarding() { change { $0.onboardingComplete = true } }
     func startMorning(demo: Bool = false) {
         if change({ state in
+            if BuildMode.usesShortcuts { try redirectEngine.startMorning(&state); return }
             engine.reconcile(&state, mayRelease: true)
             let applied = ScreenTimeBridge.shieldApplied(for: state)
             try engine.startMorning(&state, demo: demo || BuildMode.isDemo, shieldApplied: applied)
         }) { UIImpactFeedbackGenerator(style: .soft).impactOccurred() }
     }
-    func startTask() { change { try engine.startTask(&$0) } }
-    func completeTask() {
-        if change({ try engine.confirmTask(&$0) }) { UINotificationFeedbackGenerator().notificationOccurred(.success) }
+    func startTask() {
+        change { state in
+            if BuildMode.usesShortcuts { redirectEngine.reconcile(&state) }
+            try engine.startTask(&state)
+        }
     }
-    func bypass() { change { engine.bypass(&$0) } }
+    func completeTask() {
+        if change({ state in
+            if BuildMode.usesShortcuts { redirectEngine.reconcile(&state) }
+            try engine.confirmTask(&state)
+        }) { UINotificationFeedbackGenerator().notificationOccurred(.success) }
+    }
+    func bypass() {
+        change { state in
+            if BuildMode.usesShortcuts { redirectEngine.bypass(&state) }
+            else { engine.bypass(&state) }
+        }
+    }
+    func setRedirectsEnabled(_ enabled: Bool) { change { redirectEngine.setEnabled(enabled, in: &$0) } }
+    func startRedirectTest() { change { redirectEngine.startSetupTest(&$0) } }
+    func confirmRedirectSetup() {
+        change { state in
+            guard state.shortcutRedirect?.canConfirmSetup == true else {
+                errorMessage = "Start the setup test and open a selected app first. Confirm setup after you see it return you here."
+                return
+            }
+            redirectEngine.confirmSetup(&state)
+        }
+    }
+    func stopRedirectTest() { change { $0.shortcutRedirect?.testDeadline = nil } }
     func prototypeLock() {
-        guard !BuildMode.isDemo else { errorMessage = SetupError.demoUnavailable.localizedDescription; return }
+        guard !BuildMode.usesLocalStorage else { errorMessage = SetupError.demoUnavailable.localizedDescription; return }
         change { state in
             guard state.accessAvailable, state.selectionCount > 0 else { throw RoutineError.protectionUnavailable }
             engine.beginProtection(&state, at: Date(), prototype: true)

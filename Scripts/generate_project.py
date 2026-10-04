@@ -45,13 +45,14 @@ demo = [source for source in app if source != bridge]
 targets = [
     ("MorningReset", core + app, "com.apple.product-type.application", "app", "$(BASE_BUNDLE_IDENTIFIER)"),
     ("MorningResetDemo", core + demo, "com.apple.product-type.application", "app", "$(BASE_BUNDLE_IDENTIFIER).Demo"),
+    ("MorningResetShortcuts", core + demo, "com.apple.product-type.application", "app", "$(BASE_BUNDLE_IDENTIFIER).Shortcuts"),
     ("ActivityMonitor", core + [bridge, environment, "Extensions/ActivityMonitor/ActivityMonitor.swift"], "com.apple.product-type.app-extension", "appex", "$(BASE_BUNDLE_IDENTIFIER).ActivityMonitor"),
     ("ShieldConfiguration", ["Extensions/ShieldConfiguration/ShieldConfigurationExtension.swift"], "com.apple.product-type.app-extension", "appex", "$(BASE_BUNDLE_IDENTIFIER).ShieldConfiguration"),
     ("MorningResetTests", tests, "com.apple.product-type.bundle.unit-test", "xctest", "$(BASE_BUNDLE_IDENTIFIER).Tests")
 ]
 products = []
 frameworks = {}
-for framework in ["Foundation", "SwiftUI", "UIKit", "FamilyControls", "ManagedSettings", "ManagedSettingsUI", "DeviceActivity", "SwiftData", "UserNotifications"]:
+for framework in ["Foundation", "SwiftUI", "UIKit", "FamilyControls", "ManagedSettings", "ManagedSettingsUI", "DeviceActivity", "SwiftData", "UserNotifications", "AppIntents"]:
     frameworks[framework] = obj("framework:"+framework, "PBXFileReference", lastKnownFileType="wrapper.framework",
         name=framework+".framework", path="System/Library/Frameworks/"+framework+".framework", sourceTree="SDKROOT")
 
@@ -75,6 +76,7 @@ for name, sources, product_type, suffix, bundle_id in targets:
     source_phase = obj("sources:"+name, "PBXSourcesBuildPhase", buildActionMask="2147483647", files=build_sources, runOnlyForDeploymentPostprocessing="0")
     linked = {"MorningReset": ["Foundation", "SwiftUI", "UIKit", "FamilyControls", "ManagedSettings", "DeviceActivity", "SwiftData", "UserNotifications"],
         "MorningResetDemo": ["Foundation", "SwiftUI", "UIKit", "SwiftData", "UserNotifications"],
+        "MorningResetShortcuts": ["Foundation", "SwiftUI", "UIKit", "SwiftData", "UserNotifications", "AppIntents"],
         "ActivityMonitor": ["Foundation", "FamilyControls", "ManagedSettings", "DeviceActivity"],
         "ShieldConfiguration": ["ManagedSettings", "ManagedSettingsUI", "UIKit"], "MorningResetTests": ["Foundation"]}[name]
     framework_phase = obj("frameworks:"+name, "PBXFrameworksBuildPhase", buildActionMask="2147483647",
@@ -104,9 +106,10 @@ for name, sources, product_type, suffix, bundle_id in targets:
             "INFOPLIST_FILE": "Config/"+name+"-Info.plist", "GENERATE_INFOPLIST_FILE": "NO",
             "LD_RUNPATH_SEARCH_PATHS": ["$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"]}
         if suffix == "appex": settings.update(APPLICATION_EXTENSION_API_ONLY="YES", SKIP_INSTALL="YES")
-        if name not in ["MorningResetTests", "MorningResetDemo"]: settings["CODE_SIGN_ENTITLEMENTS"] = "Config/"+name+".entitlements"
+        if name not in ["MorningResetTests", "MorningResetDemo", "MorningResetShortcuts"]: settings["CODE_SIGN_ENTITLEMENTS"] = "Config/"+name+".entitlements"
         if suffix == "app": settings.update(ASSETCATALOG_COMPILER_APPICON_NAME="AppIcon", ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME="AccentColor")
         if name == "MorningResetDemo": settings["SWIFT_ACTIVE_COMPILATION_CONDITIONS"] = "$(inherited) MORNING_RESET_DEMO"
+        if name == "MorningResetShortcuts": settings["SWIFT_ACTIVE_COMPILATION_CONDITIONS"] = "$(inherited) MORNING_RESET_SHORTCUTS"
         if name == "MorningResetTests":
             settings.update(TEST_HOST="$(BUILT_PRODUCTS_DIR)/MorningReset.app/MorningReset",
                 BUNDLE_LOADER="$(TEST_HOST)", SWIFT_ACTIVE_COMPILATION_CONDITIONS="$(inherited) XCODE_TEST_TARGET")
@@ -120,9 +123,9 @@ info_base = {"CFBundleDevelopmentRegion":"en", "CFBundleExecutable":"$(EXECUTABL
     "CFBundleVersion":"$(CURRENT_PROJECT_VERSION)"}
 for name, _, _, suffix, _ in targets:
     info = dict(info_base, CFBundlePackageType="APPL" if suffix == "app" else "XPC!" if suffix == "appex" else "BNDL")
-    if name not in ["MorningResetTests", "MorningResetDemo"]: info["MorningResetAppGroup"] = "$(APP_GROUP_IDENTIFIER)"
+    if name not in ["MorningResetTests", "MorningResetDemo", "MorningResetShortcuts"]: info["MorningResetAppGroup"] = "$(APP_GROUP_IDENTIFIER)"
     if suffix == "app":
-        info.update(CFBundleDisplayName="Morning Reset Demo" if name == "MorningResetDemo" else "Morning Reset", LSRequiresIPhoneOS=True, UILaunchScreen={},
+        info.update(CFBundleDisplayName="Morning Reset Shortcuts" if name == "MorningResetShortcuts" else "Morning Reset Demo" if name == "MorningResetDemo" else "Morning Reset", LSRequiresIPhoneOS=True, UILaunchScreen={},
                     UIApplicationSceneManifest={"UIApplicationSupportsMultipleScenes":False},
                     UISupportedInterfaceOrientations=["UIInterfaceOrientationPortrait", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"])
     elif suffix == "appex":
@@ -130,7 +133,7 @@ for name, _, _, suffix, _ in targets:
             "NSExtensionPrincipalClass":"$(PRODUCT_MODULE_NAME)."+("ActivityMonitor" if name == "ActivityMonitor" else "ShieldConfigurationExtension")}
     (ROOT / "Config" / (name+"-Info.plist")).write_bytes(plistlib.dumps(info))
     file("Config/"+name+"-Info.plist")
-    if name not in ["MorningResetTests", "MorningResetDemo"]:
+    if name not in ["MorningResetTests", "MorningResetDemo", "MorningResetShortcuts"]:
         entitlements = {"com.apple.developer.family-controls":True, "com.apple.security.application-groups":["$(APP_GROUP_IDENTIFIER)"]}
         (ROOT / "Config" / (name+".entitlements")).write_bytes(plistlib.dumps(entitlements))
         file("Config/"+name+".entitlements")
@@ -143,7 +146,7 @@ groups.append(obj("group:Frameworks", "PBXGroup", name="Frameworks", children=li
 product_group = obj("group:Products", "PBXGroup", name="Products", children=products, sourceTree="<group>")
 groups.append(product_group)
 main = obj("group:main", "PBXGroup", children=groups+[refs[path] for path in refs if "/" not in path], sourceTree="<group>")
-attributes = {"LastUpgradeCheck":"1600", "TargetAttributes": {uid("target:"+name): {"CreatedOnToolsVersion":"16.0", "SystemCapabilities": {} if name == "MorningResetDemo" else {"com.apple.ApplicationGroups.iOS":{"enabled":"1"}, "com.apple.FamilyControls":{"enabled":"1"}}} for name, *_ in targets if name != "MorningResetTests"}}
+attributes = {"LastUpgradeCheck":"1600", "TargetAttributes": {uid("target:"+name): {"CreatedOnToolsVersion":"16.0", "SystemCapabilities": {} if name in ["MorningResetDemo", "MorningResetShortcuts"] else {"com.apple.ApplicationGroups.iOS":{"enabled":"1"}, "com.apple.FamilyControls":{"enabled":"1"}}} for name, *_ in targets if name != "MorningResetTests"}}
 attributes["TargetAttributes"][uid("target:MorningResetTests")] = {"TestTargetID": uid("target:MorningReset"), "CreatedOnToolsVersion":"16.0"}
 root_project = obj("project", "PBXProject", attributes=attributes, buildConfigurationList=project_config_list, compatibilityVersion="Xcode 14.0", developmentRegion="en", hasScannedForEncodings="0", knownRegions=["en", "Base"], mainGroup=main, productRefGroup=product_group, projectDirPath="", projectRoot="", targets=target_ids)
 document = {"archiveVersion":"1", "classes":{}, "objectVersion":"56", "objects":objects, "rootObject":root_project}
@@ -172,4 +175,6 @@ demo_scheme = scheme.replace(reference("MorningReset", "app"), reference("Mornin
 demo_scheme = demo_scheme.replace(f'    <BuildActionEntry buildForTesting="YES" buildForRunning="NO" buildForProfiling="NO" buildForArchiving="NO" buildForAnalyzing="YES">{reference("MorningResetTests", "xctest")}</BuildActionEntry>', '')
 demo_scheme = demo_scheme.replace(f'<TestableReference skipped="NO">{reference("MorningResetTests", "xctest")}</TestableReference>', '')
 (scheme_dir / "MorningResetDemo.xcscheme").write_text(demo_scheme)
+shortcuts_scheme = demo_scheme.replace(reference("MorningResetDemo", "app"), reference("MorningResetShortcuts", "app"))
+(scheme_dir / "MorningResetShortcuts.xcscheme").write_text(shortcuts_scheme)
 print(f"Generated {PROJECT.name}: {len(targets)} targets, {len(objects)} objects")

@@ -48,6 +48,8 @@ public struct MorningSession: Codable, Identifiable, Equatable, Sendable {
     public var taskDeadline: Date?
     public var unlockDeadline: Date?
     public var protectionID: UUID?
+    /// A voluntary Shortcuts period is separate from entitled Screen Time protection.
+    public var redirectPeriodID: UUID?
     public var eligible: Bool
     public var isDemo: Bool
     public var isPrototype: Bool
@@ -55,6 +57,14 @@ public struct MorningSession: Codable, Identifiable, Equatable, Sendable {
 
     public var isFinished: Bool { [.released, .bypassed, .interrupted].contains(phase) }
     public var currentTask: RoutineTask? { tasks.indices.contains(taskIndex) ? tasks[taskIndex] : nil }
+
+    /// The UI can enable confirmation at the saved deadline before a reconciliation tick runs.
+    /// The engine still validates the current session and period when the user taps Complete.
+    public func canConfirmTask(at date: Date) -> Bool {
+        guard currentTask != nil else { return false }
+        if phase == .awaitingConfirmation { return true }
+        return phase == .taskRunning && taskDeadline.map { date >= $0 } == true
+    }
 }
 
 public struct ProtectionPeriod: Codable, Equatable, Sendable {
@@ -95,6 +105,8 @@ public struct ResetState: Codable, Equatable, Sendable {
     public var session: MorningSession?
     public var history: [HistoryEntry] = []
     public var diagnostics: [String] = []
+    // Optional so existing version-one files remain readable without a migration.
+    public var shortcutRedirect: ShortcutRedirectSettings?
     public init() {}
 
     public mutating func log(_ message: String, at date: Date) {

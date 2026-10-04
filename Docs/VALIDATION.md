@@ -35,6 +35,56 @@ The user subsequently signed in and reported a **Personal Team**, then authorize
 The core was also retested with the installed Xcode toolchain using actual XCTest (`xcrun swift test`, with scratch/cache directories under `/tmp`). **All 26 XCTest tests passed, zero failures.** This is a macOS Foundation-core test run, not an iPhone runtime test. Log: `/tmp/morning-reset-xcode-core-tests.log`.
 - Tests cover 15-second minimum/early completion, explicit sequential starts, delayed confirmations, task snapshot isolation, ten-minute deadline/release gates, Codable relaunch persistence, bypass after expiry, demo/prototype exclusions, new-night precedence, observed permission revocation, empty routine/missing shield rejection, midnight date attribution, once-per-day credit, tonight overrides, spring/fall DST, travel date preservation, current/best/week streaks, duplicate days, atomic persistence, corrupt-file handling, concurrent updates, failed transactions, retired-monitor callbacks, schedule changes, and state persistence before restriction side effects.
 
+## Shortcuts edition — 2026-10-03
+
+Implemented on `feat/shortcuts-redirect`, branched from the latest remote `main` (`f2601dec2c4fe763f8f94b5d9eb0784ea2f99ed5`). The Desktop workspace has no Git metadata; changes were made in a clean temporary checkout and copied back without local signing settings or Xcode user data.
+
+Verified:
+
+- `python3 Scripts/test_core.py`: **35 test cases, zero assertion failures**.
+- Actual Foundation XCTest: **35 tests, zero failures**, using `CLANG_MODULE_CACHE_PATH=/tmp/morning-reset-clang-cache SWIFTPM_MODULECACHE_OVERRIDE=/tmp/morning-reset-xcode-swift-cache xcrun swift test --disable-sandbox --scratch-path /tmp/morning-reset-xcode-core-build --cache-path /tmp/morning-reset-package-cache --config-path /tmp/morning-reset-package-config --security-path /tmp/morning-reset-package-security`. Log: `/tmp/morning-reset-xcode-core-tests.log`. The first attempt needed its module cache redirected to a writable directory; the final run passed. This is macOS core testing, not an iPhone test.
+- `python3 Scripts/generate_project.py` and `python3 Scripts/check_project.py`: **six targets, 22 Swift source files**, all references/metadata/schemes and syntax accepted. Demo and Shortcuts target checks confirm no Screen Time framework linkage, signing entitlement setting, App Group metadata, or embedded-extension dependency.
+- **All three unsigned generic iOS builds succeeded** using the earlier Xcode command with `-scheme MorningResetShortcuts`, `MorningResetDemo`, and `MorningReset`. Logs: `/tmp/morning-reset-shortcuts-build.log`, `/tmp/morning-reset-demo-build.log`, `/tmp/morning-reset-ios-build.log`.
+- The Shortcuts build generated `Metadata.appintents/extract.actionsdata` with discoverable `CheckMorningRedirectIntent`, Boolean output, `openAppWhenRun: false`, and no required capabilities; it also generated the App Shortcut phrase metadata.
+- Inspected the built Shortcuts app and debug library: display name **Morning Reset Shortcuts**, no `MorningResetAppGroup` key, no `PlugIns` directory, no FamilyControls/ManagedSettings/DeviceActivity linkage, and AppIntents linked. The demo remains a separate target without these redirect intents.
+- Nine additional core cases cover: no retroactive redirect on setup; nightly start and persistence across midnight; on-demand ten-minute completion without protected credit; newer-night precedence; explicit bypass at expired waits; a pre-onboarding 60-second setup test; pause/resume without timer reset; Codable relaunch/old-schema compatibility; active-period preservation on schedule edits; and DST/travel behavior.
+
+Not verified: signed Personal Team installation, App Intent discovery or local-sandbox access at runtime, actual Shortcuts If/Open App execution, redirect delay, UI layout/accessibility, notifications, or SwiftData runtime persistence. `simctl` could not connect to CoreSimulator in this restricted environment; no simulator or physical-iPhone runtime result is claimed. The installed Xcode toolchain emitted the existing NotificationService delegate actor-isolation warning under Swift 5 mode; builds passed. A future Swift 6 migration must address that warning.
+
+Physical Shortcuts checklist (record phone/iOS version and results):
+
+| Check | Expected result | Result |
+| --- | --- | --- |
+| Install `MorningResetShortcuts` with Personal Team | No Screen Time or App Group provisioning required; independent app/data | Pending |
+| First onboarding and Settings guide | Seven readable steps, saved place, multi-app selection and loop prevention | Pending |
+| Discover Check Morning Redirect | Action appears under this app; returns a Boolean without foregrounding it | Pending |
+| 60-second setup test | Selected app redirects back to guide; test expires without enabling nightly periods | Pending |
+| Confirm observed test and finish onboarding | Status says user-confirmed; nightly redirects enabled, no claim of verified automation | Pending |
+| Selected app before/after nightly time | Allowed before due; next app-opening check requests redirect after due | Pending |
+| Start routine, leave app during each task | Redirect returns to Today/current task; timer survives relaunch; confirmation stays manual | Pending |
+| Before/at ten-minute expiry with app closed | Redirect before deadline; after deadline no redirect unless a newer night applies | Pending |
+| Bypass and next night | Current period ends without credit; next due night requests redirects | Pending |
+| New night during an old routine/wait | Old routine interrupted; old deadline cannot end the newer period | Pending |
+| Pause/resume, schedule edits, DST/travel | Saved state follows documented policies; no reset of task deadlines | Pending |
+| Disable/delete automation, expired free provisioning | App does not falsely claim a verified connection; guide explains repair/rebuild | Pending |
+| App already foreground at nightly time | No claim of forcibly closing that app | Pending |
+| Reboot, offline, reminders declined | After first unlock, local checks/routines work; notifications never execute unlocks | Pending |
+| Large text, light/dark, VoiceOver, Reduce Motion | Guide and routine readable/usable; no clipped steps | Pending |
+
+### Tutorial clarity follow-up — 2026-10-04
+
+The user reached the iPhone Shortcuts automation-trigger list but could not identify what to tap from tutorial step 2. Updated the seven-step guide with numbered, literal tap instructions and a visible App-row example. Step 2 locates App between CarPlay and Wallet in the supplied screenshots, explains the Weather placeholder, offers the Search field as a fallback, and walks through Choose → select apps → Done. Every step describes the expected next screen. Existing saved page indexes and the setup test remain unchanged.
+
+Checked Apple's [App-trigger documentation](https://support.apple.com/guide/shortcuts/setting-triggers-apde31e9638b/ios) against the supplied screenshots. `python3 Scripts/check_project.py` and `git diff --check` passed. The unsigned generic iOS `MorningResetShortcuts` build succeeded; log: `/tmp/morning-reset-tutorial-build.log`. The existing NotificationService actor-isolation warning remains. No core behavior changed, so core tests were not repeated. Actual tutorial layout, Dynamic Type, VoiceOver, and whether the instructions resolve the user's confusion still require an iPhone check; simulator runtime access remains unavailable.
+
+### Completion-button follow-up — 2026-10-04
+
+The user reported that the selected-app redirect test worked, but task Complete buttons could remain disabled at 0:00 and the setup confirmation could remain disabled. Removed the persistent Shortcuts header and the active-routine technical label; the demo label and paused-redirect status remain. The timer and Complete button now share a TimelineView date, with readiness computed from the saved deadline for every task, even before phase reconciliation. The engine still checks the current session and nightly period before accepting completion. The root foreground task restarts with scenePhase and exits on cancellation, addressing its captured inactive phase. Successful setup-test checks now persist separately from the latest check, so expiry or a later false result cannot disable confirmation; starting a new test resets that evidence. Confirmation remains the user's report of an observed redirect.
+
+Verified: `python3 Scripts/test_core.py` and actual Foundation XCTest both passed **37 tests with zero failures**. New regression cases check all four task durations at fractional-second deadline boundaries without a prior refresh, early-completion rejection, Codable relaunch, sequential progression, and successful setup checks surviving expiry/later checks while fresh attempts reset. `python3 Scripts/check_project.py` and `git diff --check` passed. All three unsigned generic iOS builds succeeded. Logs: `/tmp/morning-reset-completion-core-tests.log`, `/tmp/morning-reset-completion-build.log`, `/tmp/morning-reset-completion-demo-build.log`, `/tmp/morning-reset-completion-full-build.log`. The existing NotificationService actor-isolation warning remains.
+
+The original lifecycle issue is inferred from source and the user's symptom; no controlled iPhone reproduction was available. The updated UI and foreground lifecycle still need a device check: leave each task open until 0:00 and confirm immediately; repeat after leaving and returning; complete a setup test, let it expire, open another selected app, and confirm setup afterward. CoreSimulator remains unavailable. Existing data and automation do not need resetting. SwiftUI references: [TimelineView](https://developer.apple.com/documentation/swiftui/timelineview) and [task(id:priority:_:)](https://developer.apple.com/documentation/swiftui/view/task(id:priority:_:)).
+
 ## Not yet verified
 
 During initial implementation, this environment had Swift Command Line Tools, no Xcode app/iOS SDK, and no XCTest framework. That initial `swift test` attempt could not import XCTest; the command-line adapter executed the same tests. Xcode is now installed, and the iOS compiler check above succeeded.
@@ -87,3 +137,11 @@ For the standalone demo, first verify Personal Team installation, onboarding wit
 ## After installing Xcode
 
 Run the exact build/test commands in README.md. Resolve any SDK type or signing errors before calling the app buildable on your machine. Record compiler, Xcode version, destination, commands, and outcomes here. For shielding/callback issues, inspect device Console logs for MorningReset/Monitor and the shared diagnostic list in Settings. A registered monitor alone is not evidence of callback delivery.
+
+### Post-wait redirect diagnosis — 2026-10-04
+
+The user reports continued redirects after a ten-minute wait, while Today shows Session complete and Settings shows No active routine redirect period. This narrows the issue to the automation path or intent execution; the cause is not yet verified. Existing core checks return false at the deadline and after relaunch, and extracted App Intent metadata declares Boolean output, `openAppWhenRun: false`, and background execution. No release/schedule rules were changed.
+
+Added the last intent result (Yes: return here / No: allow other apps) and timestamp to Settings and the setup test. The guide now explains Boolean versus Has Any Value conditions and requires a second check after test expiry: the selected app should stay open unless a routine period applies. A false Boolean remains a value, so an existence comparison is insufficient. It also points out duplicate automations. Apple reference: [Use If actions](https://support.apple.com/guide/shortcuts/apd83dcd1b51/ios).
+
+Validation: 37 core test cases, zero assertion failures; project checks and diff whitespace checks passed. The unsigned generic iOS MorningResetShortcuts build succeeded (`/tmp/morning-reset-redirect-release-build.log`). These changes improve diagnosis and setup guidance; they are **not evidence that the user's continued redirect is fixed**. The actual saved automation, its condition, and a Yes/No result on the phone still need checking. CoreDevice CLI timed out initializing its service, so device state could not be read through it.

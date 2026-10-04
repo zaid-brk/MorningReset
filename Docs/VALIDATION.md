@@ -71,6 +71,12 @@ Physical Shortcuts checklist (record phone/iOS version and results):
 | Reboot, offline, reminders declined | After first unlock, local checks/routines work; notifications never execute unlocks | Pending |
 | Large text, light/dark, VoiceOver, Reduce Motion | Guide and routine readable/usable; no clipped steps | Pending |
 
+### Tutorial clarity follow-up — 2026-10-04
+
+The user reached the iPhone Shortcuts automation-trigger list but could not identify what to tap from tutorial step 2. Updated the seven-step guide with numbered, literal tap instructions and a visible App-row example. Step 2 locates App between CarPlay and Wallet in the supplied screenshots, explains the Weather placeholder, offers the Search field as a fallback, and walks through Choose → select apps → Done. Every step describes the expected next screen. Existing saved page indexes and the setup test remain unchanged.
+
+Checked Apple's [App-trigger documentation](https://support.apple.com/guide/shortcuts/setting-triggers-apde31e9638b/ios) against the supplied screenshots. `python3 Scripts/check_project.py` and `git diff --check` passed. The unsigned generic iOS `MorningResetShortcuts` build succeeded; log: `/tmp/morning-reset-tutorial-build.log`. The existing NotificationService actor-isolation warning remains. No core behavior changed, so core tests were not repeated. Actual tutorial layout, Dynamic Type, VoiceOver, and whether the instructions resolve the user's confusion still require an iPhone check; simulator runtime access remains unavailable.
+
 ## Not yet verified
 
 During initial implementation, this environment had Swift Command Line Tools, no Xcode app/iOS SDK, and no XCTest framework. That initial `swift test` attempt could not import XCTest; the command-line adapter executed the same tests. Xcode is now installed, and the iOS compiler check above succeeded.

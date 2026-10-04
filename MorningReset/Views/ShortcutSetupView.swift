@@ -5,14 +5,46 @@ struct ShortcutSetupView: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.openURL) private var openURL
     @SceneStorage("morningRedirectTutorialStep") private var page = 0
-    private let steps: [(title: String, detail: String, symbol: String)] = [
-        ("Open Shortcuts", "Open Apple’s Shortcuts app. Tap Automation at the bottom, then + or New Automation. If asked, choose Create Personal Automation.", "square.stack.3d.up"),
-        ("Choose your distractions", "Choose the App trigger, then tap Choose. Select all the apps you want to interrupt in one automation, then tap Done. Leave Morning Reset Shortcuts and Shortcuts unselected so you can return here without a loop.", "apps.iphone"),
-        ("Let it run automatically", "Select Is Opened, leaving Is Closed off. Choose Run Immediately, then Next. If your iOS version shows Ask Before Running instead, turn it off and confirm Don’t Ask.", "bolt"),
-        ("Add the morning check", "Choose New Blank Automation, then Add Action or Search Actions. Search for Check Morning Redirect and add the action from Morning Reset Shortcuts. It checks your saved schedule and routine without opening this app.", "sun.horizon"),
-        ("Add an If action", "Search for If and add it below the morning check. Set its input to the result of Check Morning Redirect (use Select Variable if needed). Set the condition to true or Yes. For a Boolean result, some versions simply show If Check Morning Redirect.", "arrow.triangle.branch"),
-        ("Send yourself back here", "Search for Open App and put it inside the If section, above Otherwise. Tap its App field and choose Morning Reset Shortcuts. Leave Otherwise empty. Don’t put Open App after End If—that would redirect even after your routine is finished.", "arrow.uturn.backward"),
-        ("Save and try it", "Tap Done to save the automation. Return here and start the 60-second test below. Open one of the apps you selected. If the automation is connected, it should send you back here. Then confirm what you saw.", "checkmark.circle")
+    private let steps: [(title: String, instructions: [String], checkpoint: String, symbol: String)] = [
+        ("Tap Automation, then +", [
+            "Open Apple’s Shortcuts app on your iPhone.",
+            "Tap Automation at the bottom of the screen.",
+            "Tap + at the top, or New Automation if you have none yet.",
+            "If you see Create Personal Automation, tap it."
+        ], "You should now see a list with Time of Day, Alarm, and other options.", "square.stack.3d.up"),
+        ("Find and tap App", [
+            "On the list of automation options, scroll down until you see App. In the layout shown here, it is below CarPlay and above Wallet.",
+            "Tap the row named App. The example underneath may say ‘When Weather is opened or closed’—that is just an example, not an app you have selected.",
+            "On the next screen, tap Choose beside App.",
+            "Select the distracting apps you want to redirect, then tap Done. You can choose several together. Leave Morning Reset Shortcuts and Shortcuts unselected to avoid a loop."
+        ], "You should be back on the App screen, with your selected apps listed beside App. Stay on that screen for the next step.", "apps.iphone"),
+        ("Select Is Opened and Run Immediately", [
+            "On the same App screen, select Is Opened. Leave Is Closed unselected.",
+            "Select Run Immediately so you will not have to approve each redirect.",
+            "Tap Next. If your version shows Ask Before Running later instead, turn it off and confirm Don’t Ask when saving."
+        ], "You should now see a screen where you can choose or create the actions to run.", "bolt"),
+        ("Add Check Morning Redirect", [
+            "Tap New Blank Automation if that option appears.",
+            "Tap Add Action or the Search Actions field.",
+            "Search for Check Morning Redirect. Tap the matching action from Morning Reset Shortcuts to add it."
+        ], "Check Morning Redirect should now be the first action in the editor.", "sun.horizon"),
+        ("Add If below the check", [
+            "Use the action search again. Search for If and tap it to add it below Check Morning Redirect.",
+            "Tap the If input and choose the result of Check Morning Redirect. Use Select Variable if needed.",
+            "Set the condition to true or Yes. For a Boolean result, some versions simply show If Check Morning Redirect."
+        ], "You should see If, Otherwise, and End If below the check action.", "arrow.triangle.branch"),
+        ("Put Open App inside If", [
+            "Search for Open App and add it.",
+            "Drag Open App into the If section, above Otherwise.",
+            "Tap the App field in Open App and choose Morning Reset Shortcuts.",
+            "Leave Otherwise empty. Open App must be above Otherwise, not after End If, so finished routines allow your other apps."
+        ], "Compare the order of your actions with the example below before continuing.", "arrow.uturn.backward"),
+        ("Save, then test the redirect", [
+            "Tap Done in Shortcuts to save the automation.",
+            "Return to this guide and tap Start 60-second redirect test below.",
+            "While the test is running, open one of the distracting apps you selected.",
+            "If you are sent back here, tap I saw the redirect · finish setup. If you stay in the other app, return here and open If it doesn’t work below."
+        ], "Confirm setup only after you have seen the redirect happen.", "checkmark.circle")
     ]
 
     var body: some View {
@@ -27,17 +59,29 @@ struct ShortcutSetupView: View {
                         Eyebrow(text: "Step \(currentPage + 1) of \(steps.count)")
                         Image(systemName: steps[currentPage].symbol).font(.largeTitle).foregroundStyle(ResetTheme.accent).accessibilityHidden(true)
                         Text(steps[currentPage].title).font(.title2.bold())
-                        Text(steps[currentPage].detail).fixedSize(horizontal: false, vertical: true)
+                        if currentPage == 1 { appTriggerPreview }
+                        ForEach(Array(steps[currentPage].instructions.enumerated()), id: \.offset) { index, instruction in
+                            HStack(alignment: .top, spacing: 12) {
+                                Text("\(index + 1)").font(.subheadline.bold())
+                                    .frame(minWidth: 28, minHeight: 28)
+                                    .background(ResetTheme.accent.opacity(0.12), in: Circle())
+                                    .accessibilityHidden(true)
+                                Text(instruction).fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        Label(steps[currentPage].checkpoint, systemImage: "eye")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                         if currentPage == 5 { automationPreview }
                         if currentPage == 6 { testControls }
                     }
                 }
-                HStack(spacing: 16) {
-                    if currentPage > 0 { Button("Previous") { page = currentPage - 1 }.frame(minHeight: 44) }
-                    Spacer()
+                VStack(spacing: 12) {
                     if currentPage < steps.count - 1 {
-                        Button("Next step") { page = currentPage + 1 }.buttonStyle(.borderedProminent).frame(minHeight: 44)
+                        Button(currentPage == 1 ? "I chose my apps · Next" : "Next step") { page = currentPage + 1 }
+                            .buttonStyle(.borderedProminent).frame(minHeight: 44)
                     }
+                    if currentPage > 0 { Button("Previous step") { page = currentPage - 1 }.frame(minHeight: 44) }
                 }
                 Button { openURL(URL(string: "shortcuts://")!) } label: {
                     Label("Open Shortcuts", systemImage: "arrow.up.forward.app")
@@ -59,6 +103,28 @@ struct ShortcutSetupView: View {
     }
 
     private var currentPage: Int { min(max(0, page), steps.count - 1) }
+
+    /// A text-based guide to the trigger list, not an interactive Shortcuts screen.
+    private var appTriggerPreview: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("In Shortcuts, look for this row").font(.subheadline.bold())
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "arrow.up.forward.app.fill")
+                    .font(.title2).foregroundStyle(.secondary).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("App").font(.headline)
+                    Text("“When Weather is opened or closed”")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").foregroundStyle(.secondary).accessibilityHidden(true)
+            }.padding(16)
+                .background(ResetTheme.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(ResetTheme.accent, lineWidth: 2))
+            Text("Can’t find it? Use Search at the bottom of that screen and type App.")
+                .font(.subheadline).fixedSize(horizontal: false, vertical: true)
+        }.accessibilityElement(children: .combine)
+    }
 
     private var automationPreview: some View {
         VStack(alignment: .leading, spacing: 10) {

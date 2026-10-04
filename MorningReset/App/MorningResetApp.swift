@@ -15,20 +15,25 @@ struct RootView: View {
     var body: some View {
         Group {
             if model.storageUnavailable {
-                ContentUnavailableView(BuildMode.isDemo ? "Local storage unavailable" : "Shared storage unavailable", systemImage: "externaldrive.badge.exclamationmark",
-                    description: Text(BuildMode.isDemo ? "Relaunch the demo to try again." : "Check signing and the App Group in Xcode, then relaunch Morning Reset."))
+                ContentUnavailableView(BuildMode.usesLocalStorage ? "Local storage unavailable" : "Shared storage unavailable", systemImage: "externaldrive.badge.exclamationmark",
+                    description: Text(BuildMode.usesLocalStorage ? "Relaunch the app to try again." : "Check signing and the App Group in Xcode, then relaunch Morning Reset."))
             } else if !model.state.onboardingComplete {
                 OnboardingView()
             } else {
-                TabView {
-                    NavigationStack { TodayView() }.tabItem { Label("Today", systemImage: "sun.horizon") }
-                    NavigationStack { RoutineView() }.tabItem { Label("Routine", systemImage: "list.bullet") }
-                    NavigationStack { SettingsView() }.tabItem { Label("Settings", systemImage: "slider.horizontal.3") }
+                TabView(selection: $model.selectedTab) {
+                    NavigationStack { TodayView() }.id(model.todayNavigationID).tabItem { Label("Today", systemImage: "sun.horizon") }.tag(0)
+                    NavigationStack { RoutineView() }.tabItem { Label("Routine", systemImage: "list.bullet") }.tag(1)
+                    NavigationStack { SettingsView() }.tabItem { Label("Settings", systemImage: "slider.horizontal.3") }.tag(2)
                 }
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
-            if BuildMode.isDemo {
+            if BuildMode.usesShortcuts {
+                Label("Shortcuts redirects · voluntary, not an app lock", systemImage: "arrow.uturn.backward")
+                    .font(.caption.weight(.medium)).foregroundStyle(ResetTheme.accent)
+                    .padding(.horizontal, 16).padding(.vertical, 10)
+                    .frame(maxWidth: .infinity).background(ResetTheme.background)
+            } else if BuildMode.isDemo {
                 Label("Demo · no app blocking or protected streaks", systemImage: "info.circle")
                     .font(.caption.weight(.medium)).foregroundStyle(ResetTheme.accent)
                     .padding(.horizontal, 16).padding(.vertical, 10)

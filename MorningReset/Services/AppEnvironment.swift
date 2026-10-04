@@ -1,18 +1,25 @@
 import Foundation
 
 enum BuildMode {
+    #if MORNING_RESET_SHORTCUTS
+    static let usesShortcuts = true
+    #else
+    static let usesShortcuts = false
+    #endif
     #if MORNING_RESET_DEMO
     static let isDemo = true
     #else
     static let isDemo = false
     #endif
+    static let usesLocalStorage = isDemo || usesShortcuts
+    static let appName = usesShortcuts ? "Morning Reset Shortcuts" : isDemo ? "Morning Reset Demo" : "Morning Reset"
 }
 
 enum SharedEnvironment {
     static func makeStore() throws -> LockedStateStore {
         let container: URL
-        #if MORNING_RESET_DEMO
-        // The free demo has its own app sandbox and never requests an App Group.
+        #if MORNING_RESET_DEMO || MORNING_RESET_SHORTCUTS
+        // Each standalone edition uses its own sandbox and never requests an App Group.
         container = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
                                                 appropriateFor: nil, create: true)
         #else
@@ -22,7 +29,7 @@ enum SharedEnvironment {
         }
         container = shared
         #endif
-        let directory = container.appendingPathComponent("MorningReset", isDirectory: true)
+        let directory = container.appendingPathComponent(BuildMode.usesShortcuts ? "MorningResetShortcuts" : "MorningReset", isDirectory: true)
         let store = try LockedStateStore(directory: directory)
         try FileManager.default.setAttributes([.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
                                               ofItemAtPath: directory.path)

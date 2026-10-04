@@ -7,6 +7,7 @@
 - Ten-minute release uses the documented foreground fallback. Notifications remind; they do not execute an unlock. Do not claim automatic background release or verified physical activity.
 - Keep prototype actions clearly labeled, and exclude them from protected streaks.
 - Keep `MorningResetDemo` free of Screen Time frameworks, entitlements, App Groups, and embedded extensions. Force its sessions to be demos, use separate local storage, and never award protected streak credit.
+- Keep `MorningResetShortcuts` separate from the demo and Screen Time app. Use local locked storage and App Intents; never add Screen Time capabilities or protected streak credit. Redirects are voluntary, setup is user-confirmed, and the app cannot install or verify personal automations. Keep the onboarding/Settings tutorial accurate.
 - Run `python3 Scripts/generate_project.py` after adding source files. Commit the generated Xcode project and shared schemes. Keep signing teams and credentials out of source control.
 - Run iOS builds/tests with Xcode when available. Record limitations honestly in Docs/VALIDATION.md. Physical Screen Time behavior requires an entitled, signed iPhone build.
 - For every change, create a new branch from the latest `main` before editing. Use `feat/`, `fix/`, or `chore/` names as appropriate; documentation and configuration changes also require a branch.

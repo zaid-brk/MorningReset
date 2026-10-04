@@ -52,14 +52,19 @@ public struct RoutineEngine {
     }
 
     public func beginProtection(_ state: inout ResetState, at date: Date, prototype: Bool) {
+        interruptSession(&state)
+        state.protection = ProtectionPeriod(startedAt: date, isPrototype: prototype)
+        state.log(prototype ? "Prototype protection started (no streak credit)" : "New nightly protection period", at: clock.now)
+    }
+
+    /// Shared by real protection and voluntary redirects when a newer night takes precedence.
+    public func interruptSession(_ state: inout ResetState) {
         if var session = state.session, !session.isFinished {
             session.phase = .interrupted
             session.eligible = false
             record(&state, session: session, outcome: .interrupted, success: false)
             state.session = session
         }
-        state.protection = ProtectionPeriod(startedAt: date, isPrototype: prototype)
-        state.log(prototype ? "Prototype protection started (no streak credit)" : "New nightly protection period", at: clock.now)
     }
 
     /// Retired registrations cannot change access, progress, or the current protection period.

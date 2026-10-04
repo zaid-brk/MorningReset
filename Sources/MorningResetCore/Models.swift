@@ -48,6 +48,8 @@ public struct MorningSession: Codable, Identifiable, Equatable, Sendable {
     public var taskDeadline: Date?
     public var unlockDeadline: Date?
     public var protectionID: UUID?
+    /// A voluntary Shortcuts period is separate from entitled Screen Time protection.
+    public var redirectPeriodID: UUID?
     public var eligible: Bool
     public var isDemo: Bool
     public var isPrototype: Bool
@@ -95,6 +97,8 @@ public struct ResetState: Codable, Equatable, Sendable {
     public var session: MorningSession?
     public var history: [HistoryEntry] = []
     public var diagnostics: [String] = []
+    // Optional so existing version-one files remain readable without a migration.
+    public var shortcutRedirect: ShortcutRedirectSettings?
     public init() {}
 
     public mutating func log(_ message: String, at date: Date) {

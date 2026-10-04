@@ -1,4 +1,4 @@
-#if MORNING_RESET_DEMO
+#if MORNING_RESET_DEMO || MORNING_RESET_SHORTCUTS
 import Foundation
 
 /// The demo target excludes the real bridge and all Screen Time frameworks/extensions.

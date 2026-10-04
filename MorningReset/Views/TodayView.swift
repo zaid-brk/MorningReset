@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TodayView: View {
     @EnvironmentObject private var model: AppModel
+    @State private var confirmBypass = false
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
@@ -10,11 +11,20 @@ struct TodayView: View {
                 } else {
                     dashboard
                 }
+                if BuildMode.usesShortcuts && !model.redirectSettings.setupConfirmed {
+                    NavigationLink { ShortcutSetupView() } label: {
+                        Label("Set up app redirects · step-by-step guide", systemImage: "list.number")
+                    }.frame(minHeight: 44)
+                }
             }.padding(24).frame(maxWidth: 600)
                 .frame(maxWidth: .infinity)
         }
         .background(ResetTheme.background).navigationTitle("Today")
         .toolbarBackground(ResetTheme.background, for: .navigationBar)
+        .confirmationDialog("Skip this redirect period?", isPresented: $confirmBypass, titleVisibility: .visible) {
+            Button("Skip without completing", role: .destructive) { model.bypass() }
+            Button("Cancel", role: .cancel) {}
+        } message: { Text("Redirects stop for the current period. This is recorded as a bypass, without protected streak credit.") }
     }
 
     private var dashboard: some View {
@@ -31,13 +41,22 @@ struct TodayView: View {
                         Image(systemName: model.shieldApplied ? "moon.fill" : "sun.horizon.fill")
                             .font(.system(size: 38)).foregroundStyle(ResetTheme.accent).accessibilityHidden(true)
                         Spacer()
-                        Text(BuildMode.isDemo ? "DEMO" : model.shieldApplied ? "PROTECTED" : "STATUS")
+                        Text(BuildMode.usesShortcuts ? "SHORTCUTS" : BuildMode.isDemo ? "DEMO" : model.shieldApplied ? "PROTECTED" : "STATUS")
                             .font(.caption.weight(.semibold)).foregroundStyle(ResetTheme.accent)
                             .padding(9).background(ResetTheme.accent.opacity(0.10), in: Capsule())
                     }
                     Text(statusTitle).font(.title2.bold())
                     Text(statusDetail).foregroundStyle(.secondary)
-                    if BuildMode.isDemo {
+                    if BuildMode.usesShortcuts {
+                        PrimaryButton(title: "I’m awake", symbol: "arrow.right", disabled: model.state.routine.isEmpty) { model.startMorning() }
+                        if model.redirectSettings.enabled {
+                            Text("Starting a routine also starts a redirect period. Your automation must be connected.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        if model.redirectSettings.period?.active == true {
+                            Button("Skip this redirect period") { confirmBypass = true }.frame(minHeight: 44)
+                        }
+                    } else if BuildMode.isDemo {
                         PrimaryButton(title: "I’m awake", symbol: "arrow.right", disabled: model.state.routine.isEmpty) { model.startMorning() }
                     } else if model.shieldApplied && model.state.protection?.active == true {
                         PrimaryButton(title: "I’m awake", symbol: "arrow.right", disabled: model.state.routine.isEmpty) { model.startMorning() }
@@ -56,7 +75,7 @@ struct TodayView: View {
                 Label(model.state.session?.successRecorded == true ? "Your morning routine is complete." : "Session complete.", systemImage: "checkmark.circle.fill")
                     .font(.headline).foregroundStyle(ResetTheme.accent)
             }
-            streakCard
+            if BuildMode.usesShortcuts { shortcutsHistoryCard } else { streakCard }
             ResetCard {
                 VStack(alignment: .leading, spacing: 14) {
                     Eyebrow(text: "Your routine")
@@ -75,6 +94,12 @@ struct TodayView: View {
     }
 
     private var statusTitle: String {
+        if BuildMode.usesShortcuts {
+            if !model.redirectSettings.setupConfirmed { return "Connect your distracting apps" }
+            if !model.redirectSettings.enabled { return "App redirects are paused" }
+            if model.redirectSettings.period?.active == true { return "Time for your morning routine" }
+            return "Ready for tonight"
+        }
         if BuildMode.isDemo { return "Your demo is ready" }
         if !model.state.accessAvailable { return "Screen Time access is off" }
         if model.state.selectionCount == 0 { return "Choose your distracting apps" }
@@ -83,6 +108,13 @@ struct TodayView: View {
         return "Nightly protection is inactive"
     }
     private var statusDetail: String {
+        if BuildMode.usesShortcuts {
+            if !model.redirectSettings.setupConfirmed { return "Follow the one-time tutorial to connect your apps in Shortcuts. Until then, this app cannot interrupt scrolling." }
+            if !model.redirectSettings.enabled { return "Enable app redirects in Settings when you’re ready. Your routine remains available." }
+            if model.redirectSettings.period?.active == true { return "Your automation should send you back here when you open selected apps. Complete your routine and ten-minute pause, or choose to skip." }
+            let next = CalendarRules.nextNight(in: model.state, at: Date(), calendar: CalendarRules.localCalendar())
+            return "Next redirect period: \(next.formatted(date: .abbreviated, time: .shortened)). Setup is confirmed by you; the app cannot verify the automation is still enabled."
+        }
         if BuildMode.isDemo { return "Try your routine with saved timers and a ten-minute pause. Other apps stay available, and demo sessions do not earn protected streak credit." }
         if !model.state.accessAvailable { return "Restore access in Settings to enable real app protection." }
         if model.state.selectionCount == 0 { return "Select individual apps in Settings. Only your selection will be restricted." }
@@ -101,7 +133,19 @@ struct TodayView: View {
                     HStack(spacing: 24) { streakItems }
                     VStack(alignment: .leading, spacing: 16) { streakItems }
                 }
-                Text(BuildMode.isDemo ? "Protected streaks stay at zero in this demo. Your sessions still appear in history." : "Timed and self-confirmed. Activities aren’t physically verified.")
+                Text(BuildMode.usesShortcuts ? "Shortcuts routines appear in history but do not earn protected streak credit. Activities are self-confirmed." : BuildMode.isDemo ? "Protected streaks stay at zero in this demo. Your sessions still appear in history." : "Timed and self-confirmed. Activities aren’t physically verified.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+    private var shortcutsHistoryCard: some View {
+        ResetCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Eyebrow(text: "Your mornings")
+                Text("\(model.state.history.filter { $0.outcome == .released }.count)").font(.title.bold()).monospacedDigit()
+                Text("Completed routines").foregroundStyle(.secondary)
+                NavigationLink("View routine history") { HistoryView() }.frame(minHeight: 44)
+                Text("History records your self-confirmed routines. It does not verify that other apps stayed unused.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }

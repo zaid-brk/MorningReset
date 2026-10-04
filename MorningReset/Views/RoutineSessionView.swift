@@ -9,7 +9,10 @@ struct RoutineSessionView: View {
 
     var body: some View {
         VStack(spacing: 24) {
-            if (session.isDemo && !BuildMode.isDemo) || session.isPrototype {
+            if BuildMode.usesShortcuts {
+                Label(model.redirectSettings.enabled ? "Shortcuts routine · redirects need your connected automation" : "Routine only · app redirects are paused", systemImage: "arrow.uturn.backward")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            } else if (session.isDemo && !BuildMode.isDemo) || session.isPrototype {
                 Label(session.isDemo ? "Demo · no app restrictions or streak credit" : "Prototype · real shields, no streak credit", systemImage: "info.circle")
                     .font(.subheadline).foregroundStyle(.secondary)
             }
@@ -19,7 +22,7 @@ struct RoutineSessionView: View {
             }
             if waiting {
                 Eyebrow(text: "Room to breathe")
-                Text(session.isDemo ? "Routine complete. Take ten minutes for yourself." : "Routine complete. Your apps unlock in 10 minutes.")
+                Text(BuildMode.usesShortcuts && model.redirectSettings.enabled ? "Routine complete. Redirects end after ten minutes." : session.isDemo ? "Routine complete. Take ten minutes for yourself." : "Routine complete. Your apps unlock in 10 minutes.")
                     .font(.title2.bold()).multilineTextAlignment(.center)
                 Text("You can put your phone down.").foregroundStyle(.secondary)
             } else {
@@ -40,9 +43,9 @@ struct RoutineSessionView: View {
             if waiting {
                 ResetCard {
                     VStack(alignment: .leading, spacing: 8) {
-                        Label(session.isDemo ? "Return after your ten-minute pause" : "Open Morning Reset after the wait", systemImage: "hand.tap")
+                        Label(BuildMode.usesShortcuts ? "Your progress is saved" : session.isDemo ? "Return after your ten-minute pause" : "Open Morning Reset after the wait", systemImage: "hand.tap")
                             .font(.headline)
-                        Text(session.isDemo ? "Your deadline is saved even if you close the demo. Come back after it ends to finish the session. Other apps stay available throughout." : "The ten-minute deadline is saved. Your apps release when you next open this app after it ends; the optional reminder does not unlock them.")
+                        Text(BuildMode.usesShortcuts ? "You can close this app. After the saved deadline, the next automation check stops redirecting for this period. A newer nightly period takes precedence. Reminders do not execute an unlock." : session.isDemo ? "Your deadline is saved even if you close the demo. Come back after it ends to finish the session. Other apps stay available throughout." : "The ten-minute deadline is saved. Your apps release when you next open this app after it ends; the optional reminder does not unlock them.")
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
                 }
@@ -57,11 +60,11 @@ struct RoutineSessionView: View {
                     PrimaryButton(title: "Complete", symbol: "checkmark", disabled: session.phase != .awaitingConfirmation) { model.completeTask() }
                 }
             }
-            Button(session.isDemo ? "End demo without completing" : "Unlock without completing") { confirmBypass = true }
+            Button(BuildMode.usesShortcuts ? "Skip without completing" : session.isDemo ? "End demo without completing" : "Unlock without completing") { confirmBypass = true }
                 .font(.subheadline).foregroundStyle(.secondary).frame(minHeight: 44)
         }.frame(maxWidth: .infinity).padding(.vertical, 12)
-        .confirmationDialog(session.isDemo ? "End this demo session?" : "Unlock without completing?", isPresented: $confirmBypass, titleVisibility: .visible) {
-            Button(session.isDemo ? "End demo" : "Unlock without completing", role: .destructive) { model.bypass() }
+        .confirmationDialog(BuildMode.usesShortcuts ? "Skip this redirect period?" : session.isDemo ? "End this demo session?" : "Unlock without completing?", isPresented: $confirmBypass, titleVisibility: .visible) {
+            Button(BuildMode.usesShortcuts ? "Skip without completing" : session.isDemo ? "End demo" : "Unlock without completing", role: .destructive) { model.bypass() }
             Button("Keep going", role: .cancel) {}
         } message: { Text("This session will be recorded as bypassed and won’t add to your routine streak.") }
     }

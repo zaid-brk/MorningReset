@@ -57,6 +57,14 @@ public struct MorningSession: Codable, Identifiable, Equatable, Sendable {
 
     public var isFinished: Bool { [.released, .bypassed, .interrupted].contains(phase) }
     public var currentTask: RoutineTask? { tasks.indices.contains(taskIndex) ? tasks[taskIndex] : nil }
+
+    /// The UI can enable confirmation at the saved deadline before a reconciliation tick runs.
+    /// The engine still validates the current session and period when the user taps Complete.
+    public func canConfirmTask(at date: Date) -> Bool {
+        guard currentTask != nil else { return false }
+        if phase == .awaitingConfirmation { return true }
+        return phase == .taskRunning && taskDeadline.map { date >= $0 } == true
+    }
 }
 
 public struct ProtectionPeriod: Codable, Equatable, Sendable {

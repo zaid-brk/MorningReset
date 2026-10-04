@@ -158,7 +158,14 @@ struct ShortcutSetupView: View {
             Button(model.redirectSettings.setupConfirmed ? "Confirm setup again" : "I saw the redirect · finish setup") {
                 model.confirmRedirectSetup()
             }.buttonStyle(.bordered).frame(minHeight: 44)
-                .disabled(model.redirectSettings.lastCheckWasTest != true || model.redirectSettings.lastCheckRequestedRedirect != true)
+                .disabled(!model.redirectSettings.canConfirmSetup)
+            if model.redirectSettings.canConfirmSetup && !model.redirectSettings.setupConfirmed {
+                Text("The test check requested a redirect. If you saw it return you here, you can finish setup even after the test timer ends.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else if !model.redirectSettings.canConfirmSetup {
+                Text("To enable this button, start the test and open a selected app while the test is running.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             if model.redirectSettings.setupConfirmed {
                 Label("Setup confirmed by you", systemImage: "checkmark.circle").foregroundStyle(ResetTheme.accent)
                 Text("Redirects are enabled. They begin at your nightly time or when you start a morning routine. You can reopen this guide from Settings.")

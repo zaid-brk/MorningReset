@@ -42,6 +42,37 @@ final class RoutineEngineTests: XCTestCase {
         XCTAssertEqual(s.session?.phase, .taskRunning)
     }
 
+    func testEveryTaskCanBeConfirmedAtItsDeadlineWithoutARefresh() throws {
+        var state = protected()
+        state.routine = [
+            RoutineTask(title: "Water", duration: 15),
+            RoutineTask(title: "10 push-ups", duration: 30),
+            RoutineTask(title: "Stretch", duration: 60),
+            RoutineTask(title: "Brush teeth", duration: 120)
+        ]
+        var now = date("2026-10-03T12:00:00Z").addingTimeInterval(0.25)
+        try RoutineEngine(clock: FixedClock(now: now), calendar: calendar).startMorning(&state, shieldApplied: true)
+        for index in state.routine.indices {
+            XCTAssertFalse(state.session!.canConfirmTask(at: now))
+            try RoutineEngine(clock: FixedClock(now: now), calendar: calendar).startTask(&state)
+            let deadline = state.session!.taskDeadline!
+            let before = deadline.addingTimeInterval(-0.01)
+            XCTAssertFalse(state.session!.canConfirmTask(at: before))
+            XCTAssertThrowsError(try RoutineEngine(clock: FixedClock(now: before), calendar: calendar).confirmTask(&state))
+            // No tick/reconcile ran at expiry: the persisted phase still says running.
+            XCTAssertEqual(state.session?.phase, .taskRunning)
+            var restored = try JSONDecoder().decode(ResetState.self, from: JSONEncoder().encode(state))
+            XCTAssertTrue(restored.session!.canConfirmTask(at: deadline))
+            XCTAssertTrue(restored.session!.canConfirmTask(at: deadline.addingTimeInterval(90)))
+            try RoutineEngine(clock: FixedClock(now: deadline), calendar: calendar).confirmTask(&restored)
+            state = restored
+            XCTAssertEqual(state.session?.taskIndex, min(index + 1, state.routine.count - 1))
+            XCTAssertEqual(state.session?.phase, index == state.routine.count - 1 ? .waitingToUnlock : .taskReady)
+            XCTAssertFalse(state.session!.canConfirmTask(at: deadline))
+            now = deadline.addingTimeInterval(2)
+        }
+    }
+
     func testSequentialTasksNeedExplicitStartAndConfirmation() throws {
         var s = protected()
         let e = engine("2026-10-03T12:00:00Z")

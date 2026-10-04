@@ -16,6 +16,11 @@ public struct ShortcutRedirectSettings: Codable, Equatable, Sendable {
     public var lastCheckAt: Date?
     public var lastCheckRequestedRedirect: Bool?
     public var lastCheckWasTest: Bool?
+    /// A successful check for the current setup attempt survives later checks and test expiry.
+    public var successfulTestCheckAt: Date?
+    public var canConfirmSetup: Bool {
+        successfulTestCheckAt != nil || (lastCheckWasTest == true && lastCheckRequestedRedirect == true)
+    }
     public init() {}
 }
 
@@ -113,6 +118,7 @@ public struct ShortcutRedirectEngine {
         state.shortcutRedirect?.lastCheckAt = nil
         state.shortcutRedirect?.lastCheckRequestedRedirect = nil
         state.shortcutRedirect?.lastCheckWasTest = nil
+        state.shortcutRedirect?.successfulTestCheckAt = nil
     }
 
     public func confirmSetup(_ state: inout ResetState) {
@@ -130,6 +136,7 @@ public struct ShortcutRedirectEngine {
         let requested = isTest || (state.onboardingComplete && settings.enabled && settings.period?.active == true)
         state.shortcutRedirect?.lastCheckWasTest = isTest
         state.shortcutRedirect?.lastCheckRequestedRedirect = requested
+        if isTest && requested { state.shortcutRedirect?.successfulTestCheckAt = clock.now }
         return requested
     }
 }

@@ -8,11 +8,18 @@ struct RoutineSessionView: View {
     private var waiting: Bool { session.phase == .waitingToUnlock }
 
     var body: some View {
-        VStack(spacing: 24) {
-            if BuildMode.usesShortcuts {
-                Label(model.redirectSettings.enabled ? "Shortcuts routine · redirects need your connected automation" : "Routine only · app redirects are paused", systemImage: "arrow.uturn.backward")
+        TimelineView(.periodic(from: .now, by: 1)) { timeline in
+            sessionContent(at: timeline.date)
+        }
+    }
+
+    private func sessionContent(at now: Date) -> some View {
+        let canComplete = session.canConfirmTask(at: now)
+        return VStack(spacing: 24) {
+            if BuildMode.usesShortcuts && !model.redirectSettings.enabled {
+                Label("App redirects are paused", systemImage: "pause.circle")
                     .font(.subheadline).foregroundStyle(.secondary)
-            } else if (session.isDemo && !BuildMode.isDemo) || session.isPrototype {
+            } else if (session.isDemo && !BuildMode.usesLocalStorage) || session.isPrototype {
                 Label(session.isDemo ? "Demo · no app restrictions or streak credit" : "Prototype · real shields, no streak credit", systemImage: "info.circle")
                     .font(.subheadline).foregroundStyle(.secondary)
             }
@@ -33,13 +40,11 @@ struct RoutineSessionView: View {
                     Text(task.title).font(.largeTitle.bold()).multilineTextAlignment(.center)
                 }
             }
-            TimelineView(.periodic(from: .now, by: 1)) { timeline in
-                let total = waiting ? 600 : session.currentTask?.duration ?? 15
-                let deadline = waiting ? session.unlockDeadline : session.taskDeadline
-                let remaining = deadline.map { max(0, $0.timeIntervalSince(timeline.date)) } ?? total
-                CountdownRing(remaining: remaining, total: total, ready: session.phase == .taskReady)
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: session.phase)
-            }
+            let total = waiting ? 600 : session.currentTask?.duration ?? 15
+            let deadline = waiting ? session.unlockDeadline : session.taskDeadline
+            let remaining = deadline.map { max(0, $0.timeIntervalSince(now)) } ?? total
+            CountdownRing(remaining: remaining, total: total, ready: session.phase == .taskReady)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: session.phase)
             if waiting {
                 ResetCard {
                     VStack(alignment: .leading, spacing: 8) {
@@ -55,9 +60,9 @@ struct RoutineSessionView: View {
                         .font(.subheadline).foregroundStyle(.secondary)
                     PrimaryButton(title: "Start", symbol: "play.fill") { model.startTask() }
                 } else {
-                    Text(session.phase == .awaitingConfirmation ? "Take your time. Confirm when you’ve finished." : "Complete becomes available when the timer ends.")
+                    Text(canComplete ? "Take your time. Confirm when you’ve finished." : "Complete becomes available when the timer ends.")
                         .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                    PrimaryButton(title: "Complete", symbol: "checkmark", disabled: session.phase != .awaitingConfirmation) { model.completeTask() }
+                    PrimaryButton(title: "Complete", symbol: "checkmark", disabled: !canComplete) { model.completeTask() }
                 }
             }
             Button(BuildMode.usesShortcuts ? "Skip without completing" : session.isDemo ? "End demo without completing" : "Unlock without completing") { confirmBypass = true }

@@ -181,7 +181,15 @@ final class AppModel: ObservableObject {
     }
     func setRedirectsEnabled(_ enabled: Bool) { change { redirectEngine.setEnabled(enabled, in: &$0) } }
     func startRedirectTest() { change { redirectEngine.startSetupTest(&$0) } }
-    func confirmRedirectSetup() { change { redirectEngine.confirmSetup(&$0) } }
+    func confirmRedirectSetup() {
+        change { state in
+            guard state.shortcutRedirect?.canConfirmSetup == true else {
+                errorMessage = "Start the setup test and open a selected app first. Confirm setup after you see it return you here."
+                return
+            }
+            redirectEngine.confirmSetup(&state)
+        }
+    }
     func stopRedirectTest() { change { $0.shortcutRedirect?.testDeadline = nil } }
     func prototypeLock() {
         guard !BuildMode.usesLocalStorage else { errorMessage = SetupError.demoUnavailable.localizedDescription; return }

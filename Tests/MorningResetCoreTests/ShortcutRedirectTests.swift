@@ -95,6 +95,29 @@ final class ShortcutRedirectTests: XCTestCase {
         XCTAssertTrue(state.history.isEmpty)
     }
 
+    func testSuccessfulSetupCheckSurvivesExpiryAndLaterChecks() throws {
+        var state = ResetState()
+        let start = redirect("2026-10-03T12:00:00Z")
+        start.startSetupTest(&state)
+        XCTAssertFalse(state.shortcutRedirect!.canConfirmSetup)
+        XCTAssertTrue(redirect("2026-10-03T12:00:10Z").check(&state))
+        XCTAssertTrue(state.shortcutRedirect!.canConfirmSetup)
+        let after = redirect("2026-10-03T12:01:00Z")
+        XCTAssertFalse(after.check(&state))
+        XCTAssertFalse(state.shortcutRedirect!.lastCheckWasTest == true)
+        XCTAssertTrue(state.shortcutRedirect!.canConfirmSetup)
+        state = try JSONDecoder().decode(ResetState.self, from: JSONEncoder().encode(state))
+        XCTAssertTrue(state.shortcutRedirect!.canConfirmSetup)
+        after.confirmSetup(&state)
+        XCTAssertTrue(state.shortcutRedirect!.setupConfirmed)
+        XCTAssertTrue(state.shortcutRedirect!.enabled)
+        after.startSetupTest(&state)
+        XCTAssertFalse(state.shortcutRedirect!.canConfirmSetup)
+        XCTAssertFalse(redirect("2026-10-03T12:02:00Z").check(&state))
+        XCTAssertFalse(state.shortcutRedirect!.canConfirmSetup)
+        XCTAssertTrue(state.history.isEmpty)
+    }
+
     func testPauseAndResumeDuringTaskPreservesTimer() throws {
         var state = configured()
         let e = redirect("2026-10-03T12:00:00Z")

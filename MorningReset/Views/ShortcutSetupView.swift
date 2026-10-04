@@ -31,7 +31,7 @@ struct ShortcutSetupView: View {
         ("Add If below the check", [
             "Use the action search again. Search for If and tap it to add it below Check Morning Redirect.",
             "Tap the If input and choose the result of Check Morning Redirect. Use Select Variable if needed.",
-            "Set the condition to true or Yes. For a Boolean result, some versions simply show If Check Morning Redirect."
+            "Set the condition to true or Yes. If you see Has Any Value, tap the input variable and change its type to Boolean first. Has Any Value is not the correct test: No is still a value. For a Boolean result, some versions simply show If Check Morning Redirect."
         ], "You should see If, Otherwise, and End If below the check action.", "arrow.triangle.branch"),
         ("Put Open App inside If", [
             "Search for Open App and add it.",
@@ -93,6 +93,7 @@ struct ShortcutSetupView: View {
                         Text("Make sure the automation is enabled, the selected app is in its list, and Run Immediately is selected.")
                         Text("If the action is missing, launch Morning Reset Shortcuts once, then reopen Shortcuts and search under Apps. Install Shortcuts from Apple if it is missing.")
                         Text("Check that Open App is inside the true If branch and points to this installation—not Morning Reset Demo or the Screen Time version.")
+                        Text("After the test expires, open the selected app again. It should stay open unless a routine period is active. If Settings shows Last check: No but you are still sent back, make sure If tests the Boolean result rather than Has Any Value, Open App is above Otherwise, and there is only one automation for these apps.")
                         Text("If you use a free Personal Team build, an expired installation must be rebuilt in Xcode before its action can work again.")
                     }.font(.subheadline).padding(.top, 12)
                 }
@@ -152,7 +153,7 @@ struct ShortcutSetupView: View {
                     .buttonStyle(.borderedProminent).frame(minHeight: 44)
             }
             if let checked = model.redirectSettings.lastCheckAt {
-                Text("The check action last ran \(checked.formatted(date: .omitted, time: .shortened)). This alone does not confirm the Open App action.")
+                Text("Last check: \(model.redirectSettings.lastCheckRequestedRedirect == true ? "Yes · return here" : "No · allow other apps") at \(checked.formatted(date: .omitted, time: .standard)). This alone does not confirm the Open App action.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Button(model.redirectSettings.setupConfirmed ? "Confirm setup again" : "I saw the redirect · finish setup") {

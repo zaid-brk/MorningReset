@@ -48,6 +48,16 @@ struct SettingsView: View {
             Section("Right now") {
                 Label(model.redirectSettings.period?.active == true && model.redirectSettings.enabled ? "A redirect period is active" : "No active routine redirect period",
                       systemImage: "arrow.uturn.backward")
+                if let requested = model.redirectSettings.lastCheckRequestedRedirect,
+                   let checked = model.redirectSettings.lastCheckAt {
+                    LabeledContent("Last check", value: requested ? "Yes · return here" : "No · allow other apps")
+                    Text("Checked at \(checked.formatted(date: .omitted, time: .standard)).")
+                        .font(.caption).foregroundStyle(.secondary)
+                    if !requested {
+                        Text("If an app still sends you here, check the automation in Shortcuts: Open App belongs inside If, and If must test the Boolean result, not whether a value exists. Also check for a second automation for the same apps.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
+                }
                 Text("Your automation checks the schedule when a selected app opens. It does not close an app already on screen or impose an iOS lock. Redirects may be delayed or fail if the automation or installation is unavailable.")
                     .font(.subheadline).foregroundStyle(.secondary)
                 if model.activeSession != nil || model.redirectSettings.period?.active == true {

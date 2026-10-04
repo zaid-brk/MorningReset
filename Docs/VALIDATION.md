@@ -137,3 +137,11 @@ For the standalone demo, first verify Personal Team installation, onboarding wit
 ## After installing Xcode
 
 Run the exact build/test commands in README.md. Resolve any SDK type or signing errors before calling the app buildable on your machine. Record compiler, Xcode version, destination, commands, and outcomes here. For shielding/callback issues, inspect device Console logs for MorningReset/Monitor and the shared diagnostic list in Settings. A registered monitor alone is not evidence of callback delivery.
+
+### Post-wait redirect diagnosis — 2026-10-04
+
+The user reports continued redirects after a ten-minute wait, while Today shows Session complete and Settings shows No active routine redirect period. This narrows the issue to the automation path or intent execution; the cause is not yet verified. Existing core checks return false at the deadline and after relaunch, and extracted App Intent metadata declares Boolean output, `openAppWhenRun: false`, and background execution. No release/schedule rules were changed.
+
+Added the last intent result (Yes: return here / No: allow other apps) and timestamp to Settings and the setup test. The guide now explains Boolean versus Has Any Value conditions and requires a second check after test expiry: the selected app should stay open unless a routine period applies. A false Boolean remains a value, so an existence comparison is insufficient. It also points out duplicate automations. Apple reference: [Use If actions](https://support.apple.com/guide/shortcuts/apd83dcd1b51/ios).
+
+Validation: 37 core test cases, zero assertion failures; project checks and diff whitespace checks passed. The unsigned generic iOS MorningResetShortcuts build succeeded (`/tmp/morning-reset-redirect-release-build.log`). These changes improve diagnosis and setup guidance; they are **not evidence that the user's continued redirect is fixed**. The actual saved automation, its condition, and a Yes/No result on the phone still need checking. CoreDevice CLI timed out initializing its service, so device state could not be read through it.
